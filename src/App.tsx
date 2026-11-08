@@ -22,7 +22,8 @@ import {
   WorkRecord, 
   SpecContent, 
   VehicleCategory,
-  CostEstimateData
+  CostEstimateData,
+  getRecordStage
 } from './types/spec';
 
 export default function App() {
@@ -111,6 +112,9 @@ export default function App() {
     const blankContent: SpecContent = {
       documentTitle: `Technical Specification of ${category}`,
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: `Procurement of ${category}`,
       fiscalYear: '2083/84',
       vehicleCategory: category,
       vehicleDescription: `${category} standard configuration`,
@@ -370,14 +374,14 @@ export default function App() {
 
       {/* Floating Notification */}
       {notification && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl text-xs font-semibold flex items-center space-x-2 border border-slate-700 animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl text-xs font-semibold flex items-center space-x-2 border border-slate-700 animate-in fade-in slide-in-from-top-2 print:hidden">
           <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
           <span>{notification}</span>
         </div>
       )}
 
       {/* Main App Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 ${viewingDoc ? 'print:hidden' : ''}`}>
         {isLoading ? (
           <div className="py-24 text-center">
             <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -489,7 +493,15 @@ export default function App() {
           onClose={() => setViewingDoc(null)}
           onEdit={() => {
             if ('document_name' in viewingDoc) {
-              handleEditRecord(viewingDoc as WorkRecord);
+              const rec = viewingDoc as WorkRecord;
+              const stage = getRecordStage(rec);
+              if (stage === 'inspected') {
+                handleInspectRecord(rec);
+              } else if (stage === 'evaluated') {
+                handleEvaluateRecord(rec);
+              } else {
+                handleEditRecord(rec);
+              }
             } else {
               handleCreateNewFromStandard(viewingDoc as StandardSpecification);
             }

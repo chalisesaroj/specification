@@ -6,7 +6,11 @@ import {
   Plus, 
   Trash2, 
   CheckCircle, 
-  AlertCircle 
+  AlertCircle,
+  Camera,
+  Upload,
+  ImagePlus,
+  RefreshCw
 } from 'lucide-react';
 import { 
   SpecContent, 
@@ -14,12 +18,30 @@ import {
   WorkRecord, 
   VehicleCategory,
   StandardSpecification,
-  CustomHeaderRow
+  CustomHeaderRow,
+  CustomDetailRow,
+  FunctionalTestRow,
+  InspectionPhoto,
+  InspectionConclusion
 } from '../types/spec';
 import { generateSpecificationPDF } from '../utils/pdfGenerator';
+import { buildConclusionText, getStageTitle } from '../utils/documentMeta';
+import { compressImage } from '../utils/imageUtils';
 import { SaveWorkRecordResult } from '../services/storageService';
 import { getSupabase } from '../lib/supabase';
 import { SupabaseConnectModal } from './SupabaseConnectModal';
+
+const DEFAULT_FUNCTIONAL_TESTS: FunctionalTestRow[] = [
+  { id: 'ft-1', test: 'Engine starting, idling and acceleration', result: 'Passed', remarks: '' },
+  { id: 'ft-2', test: 'Transmission / gear shifting (including 4WD selection)', result: 'Passed', remarks: '' },
+  { id: 'ft-3', test: 'Brakes, parking brake and ABS', result: 'Passed', remarks: '' },
+  { id: 'ft-4', test: 'Steering, suspension and wheel alignment', result: 'Passed', remarks: '' },
+  { id: 'ft-5', test: 'Electrical system, lights, horn and wipers', result: 'Passed', remarks: '' },
+  { id: 'ft-6', test: 'Air conditioning / heater and ventilation', result: 'Passed', remarks: '' },
+  { id: 'ft-7', test: 'Tyres, jack, tools and spare wheel', result: 'Passed', remarks: '' },
+  { id: 'ft-8', test: 'Safety equipment (seat belts, airbags, first-aid, extinguisher)', result: 'Passed', remarks: '' },
+];
+
 
 interface SpecEditorProps {
   initialContent: SpecContent;
@@ -31,7 +53,7 @@ interface SpecEditorProps {
   isSupabaseConnected?: boolean;
   onRefreshConnection?: () => Promise<void>;
   onSaveWorkRecord: (record: WorkRecord) => Promise<SaveWorkRecordResult>;
-  onDeleteRecord?: (id: string, name?: string) => Promise<void>;
+  onDeleteRecord?: (id: string, name?: string) => void | Promise<void>;
   onUpdateStandardSpecification?: (stdId: string, updatedContent: SpecContent) => Promise<void>;
   onSaveAsNewStandard?: (title: string, category: VehicleCategory, content: SpecContent) => Promise<void>;
   availableStandards?: StandardSpecification[];
@@ -80,6 +102,9 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
   const [organizationName, setOrganizationName] = useState(
     initialContent.organizationName || 'Pokhara Metropolitan City'
   );
+  const [subDivision, setSubDivision] = useState(initialContent.subDivision || '');
+  const [officeLocation, setOfficeLocation] = useState(initialContent.officeLocation || '');
+  const [projectName, setProjectName] = useState(initialContent.projectName || '');
   const [fiscalYear, setFiscalYear] = useState(initialContent.fiscalYear || '2083/84');
   const [tenderNo, setTenderNo] = useState(initialContent.tenderNo || '');
   const [vehicleCategory] = useState<VehicleCategory>(
@@ -88,9 +113,11 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
   const [vehicleDescription, setVehicleDescription] = useState(
     initialContent.vehicleDescription || ''
   );
-  const [make, setMake] = useState(initialContent.make || '');
-  const [model, setModel] = useState(initialContent.model || '');
-  const [countryOfOrigin, setCountryOfOrigin] = useState(initialContent.countryOfOrigin || '');
+  const [make, setMake] = useState(initialContent.make || initialContent.inspectionDetails?.make || '');
+  const [model, setModel] = useState(initialContent.model || initialContent.inspectionDetails?.model || '');
+  const [countryOfOrigin, setCountryOfOrigin] = useState(
+    initialContent.countryOfOrigin || initialContent.inspectionDetails?.countryOfOrigin || ''
+  );
   const [deliveryPlace, setDeliveryPlace] = useState(
     initialContent.deliveryPlace || 'Office of the Municipal Executive, Pokhara Metropolitan City'
   );
@@ -118,9 +145,30 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
   const [odometerReading, setOdometerReading] = useState(initialContent.inspectionDetails?.odometerReading || '30 km');
   const [batteryDetails, setBatteryDetails] = useState(initialContent.inspectionDetails?.batteryDetails || '12V 70Ah');
   const [tyreDetails, setTyreDetails] = useState(initialContent.inspectionDetails?.tyreDetails || 'Bridgestone / Brand New');
-  const [overallConclusion, setOverallConclusion] = useState<'Accepted' | 'Accepted with Conditions' | 'Rejected'>(
+  const [dateOfInspection, setDateOfInspection] = useState(
+    initialContent.inspectionDetails?.dateOfInspection ||
+      initialContent.inspectionDetails?.deliveryDate ||
+      new Date().toISOString().slice(0, 10)
+  );
+  const [overallConclusion, setOverallConclusion] = useState<InspectionConclusion>(
     initialContent.inspectionDetails?.overallConclusion || 'Accepted'
   );
+  const [conclusionText, setConclusionText] = useState(
+    initialContent.inspectionDetails?.conclusionText || ''
+  );
+  const [customDetailRows, setCustomDetailRows] = useState<CustomDetailRow[]>(
+    initialContent.inspectionDetails?.customDetailRows || []
+  );
+  const [functionalTests, setFunctionalTests] = useState<FunctionalTestRow[]>(
+    initialContent.inspectionDetails?.functionalTests?.length
+      ? initialContent.inspectionDetails.functionalTests
+      : DEFAULT_FUNCTIONAL_TESTS
+  );
+  const [photos, setPhotos] = useState<InspectionPhoto[]>(
+    initialContent.inspectionDetails?.photos || []
+  );
+  const [photoMessage, setPhotoMessage] = useState<string>('');
+
 
   // Extract all rows cleanly with sequential S.N. points 1, 2, 3... and include Scope & Delivery in table
   const [rows, setRows] = useState<SpecRow[]>(() => {
@@ -209,6 +257,136 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
     setCustomHeaderRows((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // "General Details of Inspection" extra line handlers
+  const handleAddDetailRow = () => {
+    setCustomDetailRows((prev) => [
+      ...prev,
+      { id: 'det-' + Date.now().toString(36), label: '', value: '' },
+    ]);
+  };
+
+  const handleDetailRowChange = (index: number, field: 'label' | 'value', value: string) => {
+    setCustomDetailRows((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const handleDeleteDetailRow = (index: number) => {
+    setCustomDetailRows((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Functional testing handlers
+  const handleAddFunctionalTest = () => {
+    setFunctionalTests((prev) => [
+      ...prev,
+      {
+        id: 'ft-' + Date.now().toString(36),
+        test: '',
+        result: 'Pending',
+        remarks: '',
+      },
+    ]);
+  };
+
+  const handleFunctionalTestChange = (
+    index: number,
+    field: keyof FunctionalTestRow,
+    value: string
+  ) => {
+    setFunctionalTests((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value } as FunctionalTestRow;
+      return next;
+    });
+  };
+
+  const handleDeleteFunctionalTest = (index: number) => {
+    setFunctionalTests((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Photograph handlers
+  const handlePhotoUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setPhotoMessage('');
+    const remaining = 6 - photos.length;
+    if (remaining <= 0) {
+      setPhotoMessage('Maximum 6 photographs can be attached to one inspection report.');
+      return;
+    }
+
+    const selected = Array.from(files).slice(0, remaining);
+    if (files.length > remaining) {
+      setPhotoMessage(`Only ${remaining} more photograph(s) could be added (maximum 6).`);
+    }
+
+    const added: InspectionPhoto[] = [];
+    for (const file of selected) {
+      if (!file.type.startsWith('image/')) {
+        setPhotoMessage('Only image files (JPG, PNG) can be uploaded.');
+        continue;
+      }
+      try {
+        const compressed = await compressImage(file);
+        added.push({
+          id: 'photo-' + Date.now().toString(36) + '-' + added.length,
+          dataUrl: compressed.dataUrl,
+          width: compressed.width,
+          height: compressed.height,
+          caption: '',
+        });
+      } catch {
+        setPhotoMessage('One of the selected images could not be processed.');
+      }
+    }
+
+    if (added.length > 0) {
+      setPhotos((prev) => [...prev, ...added]);
+      if (photos.length + added.length < 4) {
+        setPhotoMessage('Tip: attach 4 to 6 photographs for a complete inspection report.');
+      }
+    }
+  };
+
+  const handlePhotoCaptionChange = (index: number, caption: string) => {
+    setPhotos((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], caption };
+      return next;
+    });
+  };
+
+  const handleDeletePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleConclusionChange = (value: InspectionConclusion) => {
+    setOverallConclusion(value);
+    // Keep the standard legal wording in sync until the user customises it.
+    setConclusionText(
+      buildConclusionText(value, { selectedBidderName: selectedBidderName }, {
+        ...initialContent,
+        make,
+        model,
+        vehicleCategory,
+        bidderName: selectedBidderName,
+      })
+    );
+  };
+
+  const handleRegenerateConclusion = () => {
+    setConclusionText(
+      buildConclusionText(overallConclusion, { selectedBidderName }, {
+        ...initialContent,
+        make,
+        model,
+        vehicleCategory,
+        bidderName: selectedBidderName,
+      })
+    );
+  };
+
   const assembleCurrentContent = (): SpecContent => {
     const stage = isInspection ? 'inspected' : isEvaluation ? 'evaluated' : 'created';
     const scopeRow = rows.find(
@@ -223,6 +401,9 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
     return {
       ...initialContent,
       organizationName,
+      subDivision,
+      officeLocation,
+      projectName,
       documentTitle,
       fiscalYear,
       tenderNo,
@@ -247,8 +428,24 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
         odometerReading,
         batteryDetails,
         tyreDetails,
+        dateOfInspection,
+        make,
+        model,
+        countryOfOrigin,
         overallConclusion,
-        deliveryDate: new Date().toISOString().split('T')[0],
+        conclusionText:
+          conclusionText.trim() ||
+          buildConclusionText(overallConclusion, { selectedBidderName }, {
+            ...initialContent,
+            make,
+            model,
+            vehicleCategory,
+            bidderName: selectedBidderName,
+          }),
+        customDetailRows,
+        functionalTests,
+        photos,
+        deliveryDate: dateOfInspection || new Date().toISOString().split('T')[0],
         inspectorName: preparedBy,
         inspectorDesignation: designation,
         selectedBidderName: selectedBidderName.trim() || bidderName.trim(),
@@ -257,7 +454,7 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
         {
           id: 'sec-main',
           title: isInspection 
-            ? 'Vehicle Technical Inspection & Verification' 
+            ? 'Compliance to the Specifications' 
             : isEvaluation 
             ? 'Technical Bid Evaluation' 
             : 'Technical Specifications',
@@ -551,15 +748,45 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
             />
             <input
               type="text"
-              value={documentTitle}
-              onChange={(e) => setDocumentTitle(e.target.value)}
-              placeholder="TECHNICAL SPECIFICATION TITLE"
-              className="w-full text-center text-sm sm:text-base font-semibold uppercase tracking-wide border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none py-1 text-slate-800"
+              value={subDivision}
+              onChange={(e) => setSubDivision(e.target.value)}
+              placeholder="SUB DIVISION / DEPARTMENT"
+              className="w-full text-center text-sm sm:text-base font-semibold tracking-wide border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none py-1 text-slate-800"
+            />
+            <input
+              type="text"
+              value={officeLocation}
+              onChange={(e) => setOfficeLocation(e.target.value)}
+              placeholder="OFFICE LOCATION"
+              className="w-full text-center text-xs sm:text-sm tracking-wide border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none py-1 text-slate-600"
             />
 
-            {/* Document Meta Row */}
-            <div className="pt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-sans text-slate-600">
-              <div className="flex items-center space-x-1">
+            {/* Stage-specific document title */}
+            <div
+              className={`pt-1.5 text-sm sm:text-base font-bold uppercase tracking-wide ${
+                isInspection
+                  ? 'text-emerald-800'
+                  : isEvaluation
+                  ? 'text-indigo-900'
+                  : 'text-slate-800'
+              }`}
+            >
+              {getStageTitle(isInspection ? 'inspected' : isEvaluation ? 'evaluated' : 'created')}
+            </div>
+
+            {/* Project name & fiscal year */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-2 text-xs font-sans text-slate-600">
+              <div className="flex items-center space-x-1.5">
+                <span className="font-semibold text-slate-700">Project Name:</span>
+                <input
+                  type="text"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="e.g. Procurement of 4WD Double Cab Pickup"
+                  className="w-64 px-2 py-0.5 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="flex items-center space-x-1.5">
                 <span className="font-semibold text-slate-700">Fiscal Year:</span>
                 <input
                   type="text"
@@ -569,70 +796,72 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
                   className="w-20 px-1.5 py-0.5 border border-slate-300 rounded font-mono text-center text-xs"
                 />
               </div>
+            </div>
 
-              {/* Evaluation Mode: Specific Bidder Name input */}
-              {isEvaluation && (
+            {/* Bidder name & Reference Tender Name (Evaluation / Inspection only) */}
+            {(isEvaluation || isInspection) && (
+              <div className="pt-1 flex flex-col sm:flex-row items-center justify-center gap-x-4 gap-y-2 text-xs font-sans">
                 <div className="flex items-center space-x-1.5 bg-indigo-50/80 px-2.5 py-1 rounded-md border border-indigo-200">
-                  <span className="font-bold text-indigo-900">Bidder / Supplier:</span>
+                  <span className="font-bold text-indigo-900">Bidder Name:</span>
                   <input
                     type="text"
-                    value={bidderName}
-                    onChange={(e) => setBidderName(e.target.value)}
+                    value={isInspection ? selectedBidderName : bidderName}
+                    onChange={(e) =>
+                      isInspection ? setSelectedBidderName(e.target.value) : setBidderName(e.target.value)
+                    }
                     placeholder="e.g. United Traders Syndicate (Toyota)"
                     className="w-56 px-2 py-0.5 bg-white border border-indigo-300 rounded text-xs font-semibold text-indigo-950 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
-              )}
 
-              {/* Ref Tender number, Make, Model and origin are shown during Evaluation and Inspection */}
-              {(isEvaluation || isInspection) && (
-                <>
-                  <div className="flex items-center space-x-1">
-                    <span className="font-semibold text-slate-700">Ref/Tender No:</span>
-                    <input
-                      type="text"
-                      value={tenderNo}
-                      onChange={(e) => setTenderNo(e.target.value)}
-                      placeholder="e.g. PMC/NCB/083-84/01"
-                      className="w-40 px-1.5 py-0.5 border border-slate-300 rounded text-xs bg-slate-50/70"
-                    />
-                  </div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="font-semibold text-slate-700">Reference Tender Name:</span>
+                  <input
+                    type="text"
+                    value={tenderNo}
+                    onChange={(e) => setTenderNo(e.target.value)}
+                    placeholder="e.g. PMC/NCB/083-84/01"
+                    className="w-48 px-1.5 py-0.5 border border-slate-300 rounded text-xs bg-slate-50/70"
+                  />
+                </div>
+              </div>
+            )}
 
-                  <div className="flex items-center space-x-1">
-                    <span className="font-semibold text-slate-700">Make:</span>
-                    <input
-                      type="text"
-                      value={make}
-                      onChange={(e) => setMake(e.target.value)}
-                      placeholder="e.g. Toyota"
-                      className="w-24 px-1.5 py-0.5 border border-slate-300 rounded text-xs bg-slate-50/70"
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-1">
-                    <span className="font-semibold text-slate-700">Model:</span>
-                    <input
-                      type="text"
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      placeholder="e.g. Hilux"
-                      className="w-28 px-1.5 py-0.5 border border-slate-300 rounded text-xs bg-slate-50/70"
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-1">
-                    <span className="font-semibold text-slate-700">Origin:</span>
-                    <input
-                      type="text"
-                      value={countryOfOrigin}
-                      onChange={(e) => setCountryOfOrigin(e.target.value)}
-                      placeholder="e.g. Japan"
-                      className="w-24 px-1.5 py-0.5 border border-slate-300 rounded text-xs bg-slate-50/70"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
+            {/* Make / Model / Origin for evaluation documents */}
+            {isEvaluation && (
+              <div className="pt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-sans text-slate-600">
+                <div className="flex items-center space-x-1">
+                  <span className="font-semibold text-slate-700">Make:</span>
+                  <input
+                    type="text"
+                    value={make}
+                    onChange={(e) => setMake(e.target.value)}
+                    placeholder="e.g. Toyota"
+                    className="w-24 px-1.5 py-0.5 border border-slate-300 rounded text-xs bg-slate-50/70"
+                  />
+                </div>
+                <div className="flex items-center space-x-1">
+                  <span className="font-semibold text-slate-700">Model:</span>
+                  <input
+                    type="text"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="e.g. Hilux"
+                    className="w-28 px-1.5 py-0.5 border border-slate-300 rounded text-xs bg-slate-50/70"
+                  />
+                </div>
+                <div className="flex items-center space-x-1">
+                  <span className="font-semibold text-slate-700">Origin:</span>
+                  <input
+                    type="text"
+                    value={countryOfOrigin}
+                    onChange={(e) => setCountryOfOrigin(e.target.value)}
+                    placeholder="e.g. Japan"
+                    className="w-24 px-1.5 py-0.5 border border-slate-300 rounded text-xs bg-slate-50/70"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Dynamic Custom Header Rows (Provision to add few rows in the header) */}
             {customHeaderRows.length > 0 && (
@@ -683,46 +912,39 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
             </div>
           </div>
 
-          {/* Physical Vehicle Identification Section (Only in Inspection Mode) */}
+          {/* 1. General Details of Inspection (Only in Inspection Mode) */}
           {isInspection && (
             <div className="bg-emerald-50/70 p-4 rounded-lg border border-emerald-200 text-xs font-sans space-y-3">
-              <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
-                <span className="font-bold text-emerald-900 uppercase tracking-wide">
-                  Physical Vehicle Identification & Verification
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-emerald-700 pb-2">
+                <h2 className="text-base sm:text-lg font-bold text-emerald-900 tracking-wide">
+                  1. General Details of Inspection
+                </h2>
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    overallConclusion === 'Accepted'
+                      ? 'bg-emerald-600 text-white'
+                      : overallConclusion === 'Accepted with Conditions'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-red-600 text-white'
+                  }`}
+                >
+                  {overallConclusion.toUpperCase()}
                 </span>
-                <div className="flex items-center space-x-2">
-                  <span className="font-semibold text-emerald-800">Inspection Decision:</span>
-                  <select
-                    value={overallConclusion}
-                    onChange={(e) => setOverallConclusion(e.target.value as any)}
-                    className="px-2 py-1 bg-white font-bold text-emerald-800 border border-emerald-300 rounded focus:outline-none"
-                  >
-                    <option value="Accepted">Accepted / Passed</option>
-                    <option value="Accepted with Conditions">Accepted with Conditions</option>
-                    <option value="Rejected">Rejected / Failed</option>
-                  </select>
-                </div>
               </div>
 
-              {/* Selected Winning Bidder for Inspection */}
-              <div className="bg-white p-2.5 rounded border border-emerald-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex-1">
-                  <span className="block text-[11px] font-bold text-emerald-950 mb-0.5">
-                    Selected Winning Bidder / Supplying Firm:
-                  </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Engine Number:</span>
                   <input
                     type="text"
-                    value={selectedBidderName}
-                    onChange={(e) => setSelectedBidderName(e.target.value)}
-                    placeholder="e.g. United Traders Syndicate Pvt. Ltd. (Authorized Toyota Distributor)"
-                    className="w-full px-2 py-1 bg-emerald-50/40 border border-emerald-300 rounded text-xs font-semibold text-emerald-900 focus:outline-none focus:bg-white"
+                    value={engineNo}
+                    onChange={(e) => setEngineNo(e.target.value)}
+                    placeholder="e.g. 2GD-987654"
+                    className="w-full bg-white px-2 py-1 border border-slate-300 rounded text-xs font-mono"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Chassis / VIN:</span>
+                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Chassis Number:</span>
                   <input
                     type="text"
                     value={chassisNo}
@@ -732,13 +954,22 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
                   />
                 </div>
                 <div>
-                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Engine No:</span>
+                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Date of Inspection:</span>
+                  <input
+                    type="date"
+                    value={dateOfInspection}
+                    onChange={(e) => setDateOfInspection(e.target.value)}
+                    className="w-full bg-white px-2 py-1 border border-slate-300 rounded text-xs"
+                  />
+                </div>
+                <div>
+                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Manufacture Year:</span>
                   <input
                     type="text"
-                    value={engineNo}
-                    onChange={(e) => setEngineNo(e.target.value)}
-                    placeholder="e.g. 2GD-987654"
-                    className="w-full bg-white px-2 py-1 border border-slate-300 rounded text-xs font-mono"
+                    value={manufacturingYear}
+                    onChange={(e) => setManufacturingYear(e.target.value)}
+                    placeholder="e.g. 2026"
+                    className="w-full bg-white px-2 py-1 border border-slate-300 rounded text-xs"
                   />
                 </div>
                 <div>
@@ -752,17 +983,7 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
                   />
                 </div>
                 <div>
-                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Mfg Year:</span>
-                  <input
-                    type="text"
-                    value={manufacturingYear}
-                    onChange={(e) => setManufacturingYear(e.target.value)}
-                    placeholder="e.g. 2026"
-                    className="w-full bg-white px-2 py-1 border border-slate-300 rounded text-xs"
-                  />
-                </div>
-                <div>
-                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Odometer:</span>
+                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Odometer Reading:</span>
                   <input
                     type="text"
                     value={odometerReading}
@@ -772,29 +993,92 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
                   />
                 </div>
                 <div>
-                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Battery:</span>
+                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Make:</span>
                   <input
                     type="text"
-                    value={batteryDetails}
-                    onChange={(e) => setBatteryDetails(e.target.value)}
-                    placeholder="e.g. 12V 70Ah"
+                    value={make}
+                    onChange={(e) => setMake(e.target.value)}
+                    placeholder="e.g. Toyota"
                     className="w-full bg-white px-2 py-1 border border-slate-300 rounded text-xs"
                   />
                 </div>
-                <div className="col-span-2">
-                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Tyres & Accessories:</span>
+                <div>
+                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Model:</span>
                   <input
                     type="text"
-                    value={tyreDetails}
-                    onChange={(e) => setTyreDetails(e.target.value)}
-                    placeholder="e.g. 265/65R17 Brand New, Jack & Tools"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="e.g. Hilux"
                     className="w-full bg-white px-2 py-1 border border-slate-300 rounded text-xs"
                   />
                 </div>
+                <div>
+                  <span className="block text-[11px] font-semibold text-slate-600 mb-0.5">Origin:</span>
+                  <input
+                    type="text"
+                    value={countryOfOrigin}
+                    onChange={(e) => setCountryOfOrigin(e.target.value)}
+                    placeholder="e.g. Japan"
+                    className="w-full bg-white px-2 py-1 border border-slate-300 rounded text-xs"
+                  />
+                </div>
+
+                {/* User-defined additional inspection detail lines */}
+                {customDetailRows.map((row, idx) => (
+                  <div key={row.id} className="bg-white/70 p-2 rounded border border-emerald-300 space-y-1">
+                    <div className="flex items-center space-x-1">
+                      <input
+                        type="text"
+                        value={row.label}
+                        onChange={(e) => handleDetailRowChange(idx, 'label', e.target.value)}
+                        placeholder="Field name (e.g. Fuel Type)"
+                        className="w-full px-1.5 py-0.5 border-b border-dashed border-slate-400 bg-transparent text-[11px] font-semibold text-slate-700 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDetailRow(idx)}
+                        className="text-slate-400 hover:text-red-600 p-0.5"
+                        title="Delete this detail line"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={row.value}
+                      onChange={(e) => handleDetailRowChange(idx, 'value', e.target.value)}
+                      placeholder="Value"
+                      className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleAddDetailRow}
+                  className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 flex items-center space-x-1 px-2.5 py-1 rounded-md hover:bg-emerald-100 transition-colors border border-dashed border-emerald-400"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>+ Add Detail Line</span>
+                </button>
+                <span className="text-[10px] text-emerald-700">
+                  Every line above can be edited or deleted.
+                </span>
               </div>
             </div>
           )}
 
+
+          {/* 2. Compliance to the Specifications (inspection) */}
+          {isInspection && (
+            <div className="border-b-2 border-emerald-700 pb-1.5 font-sans">
+              <h2 className="text-base sm:text-lg font-bold text-emerald-900 tracking-wide">
+                2. Compliance to the Specifications
+              </h2>
+            </div>
+          )}
 
           {/* Technical Specifications Table */}
           <div className="overflow-x-auto font-sans">
@@ -811,12 +1095,8 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
                   <th className={`py-2 px-3 border border-slate-300 text-left ${isEvaluation || isInspection ? 'w-1/5' : 'w-1/4'}`}>
                     {isInspection ? 'Delivered / Inspected Specification' : "Bidder's Offered Specification"}
                   </th>
-                  {/* Inspection Result column: ONLY rendered during Inspection */}
-                  {isInspection && (
-                    <th className="py-2 px-2 border border-slate-300 text-center w-28">Inspection Result</th>
-                  )}
-                  {/* Compliance column: ONLY rendered during Evaluation */}
-                  {isEvaluation && (
+                  {/* Compliance column: Evaluation and Inspection */}
+                  {(isEvaluation || isInspection) && (
                     <th className="py-2 px-2 border border-slate-300 text-center w-28">Compliance</th>
                   )}
                   <th className="py-2 px-1 border border-slate-300 text-center w-8"></th>
@@ -880,30 +1160,8 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
                       />
                     </td>
 
-                    {/* Inspection Result (ONLY in Inspection mode) */}
-                    {isInspection && (
-                      <td className="py-2 px-1 border border-slate-300 text-center align-top">
-                        <select
-                          value={row.inspectionResult || 'Accepted'}
-                          onChange={(e) => handleRowChange(idx, 'inspectionResult', e.target.value as any)}
-                          className={`w-full py-1.5 px-1 text-[11px] font-semibold rounded border focus:outline-none cursor-pointer ${
-                            row.inspectionResult === 'Accepted'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                              : row.inspectionResult === 'Rejected'
-                              ? 'bg-red-50 text-red-800 border-red-300'
-                              : 'bg-amber-50 text-amber-800 border-amber-300'
-                          }`}
-                        >
-                          <option value="Accepted">Accepted</option>
-                          <option value="Conditional">Conditional</option>
-                          <option value="Rejected">Rejected</option>
-                          <option value="Pending">Pending</option>
-                        </select>
-                      </td>
-                    )}
-
-                    {/* Compliance (ONLY in Evaluation mode) */}
-                    {isEvaluation && (
+                    {/* Compliance (Evaluation and Inspection) */}
+                    {(isEvaluation || isInspection) && (
                       <td className="py-2 px-1 border border-slate-300 text-center align-top">
                         <select
                           value={row.compliance || 'Complied'}
@@ -954,6 +1212,230 @@ export const SpecEditor: React.FC<SpecEditorProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Inspection report: 3. Functional Testing, 4. Conclusion, 5. Photographs */}
+          {isInspection && (
+            <>
+              {/* 3. Functional Testing */}
+              <div className="font-sans space-y-2">
+                <div className="border-b-2 border-emerald-700 pb-1.5">
+                  <h2 className="text-base sm:text-lg font-bold text-emerald-900 tracking-wide">
+                    3. Functional Testing
+                  </h2>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border border-slate-300 border-collapse">
+                    <thead>
+                      <tr className="bg-emerald-800 text-white font-bold">
+                        <th className="py-2 px-2 border border-emerald-700 text-center w-12">S.N.</th>
+                        <th className="py-2 px-3 border border-emerald-700 text-left">Functional Test</th>
+                        <th className="py-2 px-2 border border-emerald-700 text-center w-32">Result</th>
+                        <th className="py-2 px-3 border border-emerald-700 text-left w-1/4">Remarks</th>
+                        <th className="py-2 px-1 border border-emerald-700 text-center w-8"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {functionalTests.map((test, idx) => (
+                        <tr key={test.id} className="hover:bg-emerald-50/40">
+                          <td className="py-2 px-2 border border-slate-300 text-center font-mono text-slate-700">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2 px-2 border border-slate-300 align-top">
+                            <textarea
+                              rows={2}
+                              value={test.test}
+                              onChange={(e) => handleFunctionalTestChange(idx, 'test', e.target.value)}
+                              placeholder="Describe the functional test..."
+                              className="w-full p-1 text-xs border border-transparent hover:border-slate-300 focus:border-emerald-500 rounded bg-transparent focus:bg-white resize-y font-semibold text-slate-800 focus:outline-none"
+                            />
+                          </td>
+                          <td className="py-2 px-2 border border-slate-300 text-center align-top">
+                            <select
+                              value={test.result || 'Pending'}
+                              onChange={(e) => handleFunctionalTestChange(idx, 'result', e.target.value)}
+                              className={`w-full py-1.5 px-1 text-[11px] font-semibold rounded border focus:outline-none cursor-pointer ${
+                                test.result === 'Passed'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                  : test.result === 'Failed'
+                                  ? 'bg-red-50 text-red-800 border-red-300'
+                                  : 'bg-amber-50 text-amber-800 border-amber-300'
+                              }`}
+                            >
+                              <option value="Passed">Passed</option>
+                              <option value="Failed">Failed</option>
+                              <option value="Not Applicable">Not Applicable</option>
+                              <option value="Pending">Pending</option>
+                            </select>
+                          </td>
+                          <td className="py-2 px-2 border border-slate-300 align-top">
+                            <textarea
+                              rows={2}
+                              value={test.remarks || ''}
+                              onChange={(e) => handleFunctionalTestChange(idx, 'remarks', e.target.value)}
+                              placeholder="Optional remarks..."
+                              className="w-full p-1 text-xs border border-transparent hover:border-slate-300 focus:border-emerald-500 rounded bg-transparent focus:bg-white resize-y text-slate-700 focus:outline-none"
+                            />
+                          </td>
+                          <td className="py-2 px-1 border border-slate-300 text-center align-top">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFunctionalTest(idx)}
+                              className="text-slate-300 hover:text-red-600 p-1 rounded"
+                              title="Delete this functional test"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddFunctionalTest}
+                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 flex items-center space-x-1 py-1 px-2 rounded hover:bg-emerald-50 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add Functional Test</span>
+                </button>
+              </div>
+
+              {/* 4. Conclusion */}
+              <div className="font-sans space-y-2">
+                <div className="border-b-2 border-emerald-700 pb-1.5">
+                  <h2 className="text-base sm:text-lg font-bold text-emerald-900 tracking-wide">
+                    4. Conclusion
+                  </h2>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <span className="font-bold text-slate-700">Inspection Decision:</span>
+                  <select
+                    value={overallConclusion}
+                    onChange={(e) => handleConclusionChange(e.target.value as InspectionConclusion)}
+                    className={`px-3 py-1.5 rounded-lg border font-bold focus:outline-none ${
+                      overallConclusion === 'Accepted'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        : overallConclusion === 'Accepted with Conditions'
+                        ? 'bg-amber-50 text-amber-800 border-amber-300'
+                        : 'bg-red-50 text-red-800 border-red-300'
+                    }`}
+                  >
+                    <option value="Accepted">Accepted</option>
+                    <option value="Not Accepted">Not Accepted</option>
+                    <option value="Accepted with Conditions">Accepted with Conditions</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={handleRegenerateConclusion}
+                    className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 font-semibold"
+                    title="Insert the standard conclusion wording for the selected decision"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Insert Standard Wording</span>
+                  </button>
+                </div>
+
+                <textarea
+                  rows={5}
+                  value={conclusionText}
+                  onChange={(e) => setConclusionText(e.target.value)}
+                  placeholder={buildConclusionText(overallConclusion, { selectedBidderName }, {
+                    ...initialContent,
+                    make,
+                    model,
+                    vehicleCategory,
+                    bidderName: selectedBidderName,
+                  })}
+                  className="w-full p-3 text-xs leading-relaxed border border-slate-300 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                />
+                <p className="text-[10px] text-slate-500">
+                  The conclusion automatically follows the selected decision. You may edit the wording
+                  above or leave it blank to use the standard text.
+                </p>
+              </div>
+
+              {/* 5. Photographs */}
+              <div className="font-sans space-y-2">
+                <div className="border-b-2 border-emerald-700 pb-1.5 flex items-center justify-between">
+                  <h2 className="text-base sm:text-lg font-bold text-emerald-900 tracking-wide">
+                    5. Photographs
+                  </h2>
+                  <span className="text-[11px] font-semibold text-slate-600">{photos.length} / 6 attached</span>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Photographs (4–6)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        handlePhotoUpload(e.target.files);
+                        e.currentTarget.value = '';
+                      }}
+                    />
+                  </label>
+                  <span className="text-[10px] text-slate-500">
+                    Photos appear on the last page of the PDF / print report.
+                  </span>
+                </div>
+
+                {photoMessage && (
+                  <p className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                    {photoMessage}
+                  </p>
+                )}
+
+                {photos.length === 0 ? (
+                  <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center text-slate-400">
+                    <ImagePlus className="w-8 h-8 mx-auto mb-1.5" />
+                    <p className="text-xs font-medium">No photographs attached yet.</p>
+                    <p className="text-[10px]">Attach 4 to 6 photographs of the supplied item.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {photos.map((photo, idx) => (
+                      <div key={photo.id} className="border border-slate-300 rounded-lg overflow-hidden bg-slate-50">
+                        <div className="relative">
+                          <img
+                            src={photo.dataUrl}
+                            alt={photo.caption || `Photograph ${idx + 1}`}
+                            className="w-full h-32 object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePhoto(idx)}
+                            className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-700 text-white rounded"
+                            title="Remove photograph"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-slate-900/75 text-white text-[10px] rounded">
+                            {idx + 1}
+                          </span>
+                        </div>
+                        <input
+                          type="text"
+                          value={photo.caption || ''}
+                          onChange={(e) => handlePhotoCaptionChange(idx, e.target.value)}
+                          placeholder="Caption (optional)"
+                          className="w-full px-2 py-1.5 text-[11px] bg-white border-t border-slate-200 focus:outline-none focus:bg-emerald-50"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Official Signatures Section */}
           <div className="pt-12 grid grid-cols-2 gap-12 text-center text-xs font-sans text-slate-700">

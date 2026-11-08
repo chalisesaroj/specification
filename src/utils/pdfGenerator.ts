@@ -1,11 +1,582 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { WorkRecord, SpecContent, CostEstimateData } from '../types/spec';
+import {
+  WorkRecord,
+  SpecContent,
+  CostEstimateData,
+  DocumentStage,
+  FunctionalTestRow,
+  InspectionPhoto,
+  SpecRow,
+} from '../types/spec';
 import { numberToWordsNPR } from './numberToWords';
+import {
+  getStageTitle,
+  resolveStage,
+  buildConclusionText,
+  getGeneralInspectionRows,
+  isAcceptedConclusion,
+} from './documentMeta';
 
 export interface GeneratePDFOptions {
   isEvaluation?: boolean;
   isInspection?: boolean;
+}
+
+const PAGE_MARGIN = 14;
+const BOTTOM_MARGIN = 20;
+
+type Doc = jsPDF;
+
+function pageWidth(doc: Doc) {
+  return doc.internal.pageSize.getWidth();
+}
+
+function pageHeight(doc: Doc) {
+  return doc.internal.pageSize.getHeight();
+}
+
+/** Adds a page if the next block would not fit, returning the safe Y position. */
+function ensureSpace(doc: Doc, y: number, needed: number): number {
+  if (y + needed > pageHeight(doc) - BOTTOM_MARGIN) {
+    doc.addPage();
+    return 20;
+  }
+  return y;
+}
+
+/** Draws the shared document header used by every document type. */
+function drawDocumentHeader(doc: Doc, content: SpecContent, stage: DocumentStage, startY: number): number {
+  const w = pageWidth(doc);
+  const center = w / 2;
+  let y = startY;
+
+  // Top rule
+  doc.setDrawColor(30, 58, 138);
+  doc.setLineWidth(0.8);
+  doc.line(PAGE_MARGIN, y - 6, w - PAGE_MARGIN, y - 6);
+
+  // 1. Name of Office
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(24, 43, 73);
+  doc.text((content.organizationName || 'OFFICE NAME').toUpperCase(), center, y, { align: 'center' });
+  y += 5.6;
+
+  // 2. Sub division
+  if (content.subDivision?.trim()) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text(content.subDivision.trim(), center, y, { align: 'center' });
+    y += 4.4;
+  }
+
+  // 3. Office location
+  if (content.officeLocation?.trim()) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(content.officeLocation.trim(), center, y, { align: 'center' });
+    y += 4.4;
+  }
+
+  // 4. Stage-specific document title
+  const stageTitle = getStageTitle(stage).toUpperCase();
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11.5);
+  if (stage === 'inspected') {
+    doc.setTextColor(22, 101, 52);
+  } else if (stage === 'evaluated') {
+    doc.setTextColor(30, 58, 138);
+  } else {
+    doc.setTextColor(30, 41, 59);
+  }
+  doc.text(stageTitle, center, y, { align: 'center' });
+  y += 4.8;
+
+  // Thin accent underline
+  const titleWidth = doc.getTextWidth(stageTitle);
+  doc.setDrawColor(
+    stage === 'inspected' ? 22 : 30,
+    stage === 'inspected' ? 101 : 58,
+    stage === 'inspected' ? 52 : 138
+  );
+  doc.setLineWidth(0.5);
+  doc.line(center - titleWidth / 2, y - 1.4, center + titleWidth / 2, y - 1.4);
+  y += 2.2;
+
+  // 5. Project name
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.6);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Project Name: ${content.projectName?.trim() || '—'}`, center, y, { align: 'center' });
+  y += 4.2;
+
+  // 6. Fiscal year
+  doc.text(`Fiscal Year: ${content.fiscalYear?.trim() || '2083/84'}`, center, y, { align: 'center' });
+  y += 4.2;
+
+  // 7 & 8. Bidder name and Reference Tender Name (evaluation / inspection only)
+  if (stage === 'evaluated' || stage === 'inspected') {
+    const bidder =
+      content.inspectionDetails?.selectedBidderName || content.bidderName || '—';
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.6);
+    doc.setTextColor(stage === 'inspected' ? 22 : 30, stage === 'inspected' ? 101 : 58, stage === 'inspected' ? 52 : 138);
+    doc.text(`Bidder Name: ${bidder}`, center, y, { align: 'center' });
+    y += 4.2;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text(`Reference Tender Name: ${content.tenderNo?.trim() || '—'}`, center, y, { align: 'center' });
+    y += 4.2;
+  }
+
+  // User-defined additional header lines
+  const validHeaders = (content.customHeaderRows || []).filter((r) => r.label && r.value);
+  if (validHeaders.length > 0) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.8);
+    doc.setTextColor(71, 85, 105);
+    validHeaders.forEach((r) => {
+      doc.text(`${r.label}: ${r.value}`, center, y, { align: 'center' });
+      y += 3.7;
+    });
+  }
+
+  // Bottom rule of the header
+  doc.setDrawColor(148, 163, 184);
+  doc.setLineWidth(0.4);
+  doc.line(PAGE_MARGIN, y - 1.5, w - PAGE_MARGIN, y - 1.5);
+  return y + 4.5;
+}
+
+function drawSectionHeading(doc: Doc, text: string, y: number, accent: [number, number, number] = [30, 58, 138]): number {
+  y = ensureSpace(doc, y, 14);
+  doc.setFillColor(...accent);
+  doc.roundedRect(PAGE_MARGIN, y - 4.2, 3, 6.4, 1, 1, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(24, 43, 73);
+  doc.text(text, PAGE_MARGIN + 6, y);
+  y += 4;
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.line(PAGE_MARGIN, y, pageWidth(doc) - PAGE_MARGIN, y);
+  return y + 4;
+}
+
+function resolveCompliance(row: SpecRow): string {
+  if (row.compliance) return row.compliance;
+  switch (row.inspectionResult) {
+    case 'Rejected':
+      return 'Not Complied';
+    case 'Conditional':
+      return 'Partial';
+    case 'Pending':
+      return 'Pending';
+    case 'Accepted':
+      return 'Complied';
+    default:
+      return 'Complied';
+  }
+}
+
+/** Section 1: General Details of Inspection (inspection only). */
+function drawGeneralDetails(doc: Doc, content: SpecContent, y: number): number {
+  y = drawSectionHeading(doc, '1. General Details of Inspection', y, [22, 101, 52]);
+
+  const rows = getGeneralInspectionRows(content);
+  // Two label/value pairs per table row keeps the block compact on one page.
+  const body: string[][] = [];
+  for (let i = 0; i < rows.length; i += 2) {
+    const a = rows[i];
+    const b = rows[i + 1];
+    body.push([a?.label || '', a?.value || '—', b?.label || '', b?.value || '']);
+  }
+
+  autoTable(doc, {
+    startY: y,
+    body,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 2.2,
+      textColor: [30, 41, 59],
+      lineColor: [203, 213, 225],
+      lineWidth: 0.2,
+      valign: 'middle',
+    },
+    columnStyles: {
+      0: { cellWidth: 34, fontStyle: 'bold', fillColor: [240, 253, 244], textColor: [22, 101, 52] },
+      1: { cellWidth: 56 },
+      2: { cellWidth: 34, fontStyle: 'bold', fillColor: [240, 253, 244], textColor: [22, 101, 52] },
+      3: { cellWidth: 58 },
+    },
+    margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, bottom: BOTTOM_MARGIN },
+  });
+
+  return (doc as any).lastAutoTable.finalY + 7;
+}
+
+function buildSpecificationTable(content: SpecContent, stage: DocumentStage) {
+  const isInspect = stage === 'inspected';
+  const isEval = stage === 'evaluated';
+  const tableBody: any[] = [];
+  let counter = 1;
+
+  const cleanSN = (itemNum: string | undefined): string => {
+    if (!itemNum) return String(counter++);
+    const match = itemNum.match(/^\d+\.(\d+)$/);
+    if (match) return match[1];
+    return itemNum;
+  };
+
+  const allRowsFlat = content.sections.flatMap((s) => s.rows || []);
+  const hasScope = allRowsFlat.some(
+    (r) => r.parameter?.toLowerCase().includes('scope') || r.parameter?.toLowerCase().includes('general')
+  );
+  const hasDelivery = allRowsFlat.some((r) => r.parameter?.toLowerCase().includes('delivery'));
+
+  const extraRows: any[] = [];
+  if (!hasScope && content.vehicleDescription) {
+    extraRows.push({
+      sn: cleanSN(undefined),
+      parameter: 'Vehicle Scope & General Description',
+      requirement: content.vehicleDescription,
+      offered: isInspect ? 'Verified as per specification' : '',
+      compliance: 'Complied',
+    });
+  }
+  if (!hasDelivery && content.deliveryPlace) {
+    extraRows.push({
+      sn: cleanSN(undefined),
+      parameter: 'Delivery Destination',
+      requirement: content.deliveryPlace,
+      offered: isInspect ? 'Delivered at site' : '',
+      compliance: 'Complied',
+    });
+  }
+
+  const pushRow = (sn: string, parameter: string, requirement: string, offered: string, compliance: string) => {
+    if (isInspect || isEval) {
+      tableBody.push([sn, parameter, requirement, offered, compliance]);
+    } else {
+      tableBody.push([sn, parameter, requirement, offered]);
+    }
+  };
+
+  content.sections.forEach((section, sIdx) => {
+    if (content.sections.length > 1) {
+      tableBody.push([
+        {
+          content: section.title.toUpperCase(),
+          colSpan: isInspect || isEval ? 5 : 4,
+          styles: {
+            fillColor: [241, 245, 249],
+            textColor: [15, 23, 42],
+            fontStyle: 'bold' as const,
+            fontSize: 8,
+            halign: 'left' as const,
+            cellPadding: 2.5,
+          },
+        },
+      ]);
+    }
+
+    if (sIdx === 0) {
+      extraRows.forEach((r) => pushRow(r.sn, r.parameter, r.requirement, r.offered, r.compliance));
+    }
+
+    section.rows.forEach((row) => {
+      pushRow(
+        cleanSN(row.itemNumber),
+        row.parameter || '',
+        row.requirement || '',
+        (isInspect ? row.inspectedValue || row.offeredSpecification : row.offeredSpecification) || '',
+        resolveCompliance(row)
+      );
+    });
+  });
+
+  const head = isInspect
+    ? [
+        [
+          { content: 'S.N.', styles: { halign: 'center' as const, cellWidth: 12 } },
+          { content: 'Criteria / Parameter', styles: { halign: 'left' as const, cellWidth: 42 } },
+          { content: "Purchaser's Technical Requirement", styles: { halign: 'left' as const, cellWidth: 56 } },
+          { content: 'Delivered / Inspected Specification', styles: { halign: 'left' as const, cellWidth: 44 } },
+          { content: 'Compliance', styles: { halign: 'center' as const, cellWidth: 28 } },
+        ],
+      ]
+    : isEval
+    ? [
+        [
+          { content: 'S.N.', styles: { halign: 'center' as const, cellWidth: 12 } },
+          { content: 'Criteria / Parameter', styles: { halign: 'left' as const, cellWidth: 42 } },
+          { content: "Purchaser's Technical Requirement", styles: { halign: 'left' as const, cellWidth: 60 } },
+          { content: "Bidder's Offered Specification", styles: { halign: 'left' as const, cellWidth: 40 } },
+          { content: 'Compliance', styles: { halign: 'center' as const, cellWidth: 28 } },
+        ],
+      ]
+    : [
+        [
+          { content: 'S.N.', styles: { halign: 'center' as const, cellWidth: 14 } },
+          { content: 'Criteria / Parameter', styles: { halign: 'left' as const, cellWidth: 48 } },
+          { content: "Purchaser's Technical Requirement", styles: { halign: 'left' as const, cellWidth: 76 } },
+          { content: "Bidder's Offered Specification", styles: { halign: 'left' as const, cellWidth: 44 } },
+        ],
+      ];
+
+  return { head, body: tableBody };
+}
+
+function drawSpecificationTable(doc: Doc, content: SpecContent, stage: DocumentStage, y: number): number {
+  const { head, body } = buildSpecificationTable(content, stage);
+
+  autoTable(doc, {
+    startY: y,
+    head,
+    body,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 2.4,
+      textColor: [30, 41, 59],
+      lineColor: [226, 232, 240],
+      lineWidth: 0.2,
+      valign: 'middle',
+    },
+    headStyles: {
+      fillColor: stage === 'inspected' ? [22, 101, 52] : [30, 58, 138],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8,
+    },
+    alternateRowStyles: { fillColor: [255, 255, 255] },
+    margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, bottom: BOTTOM_MARGIN },
+  });
+
+  return (doc as any).lastAutoTable.finalY + 7;
+}
+
+/** Section 3: Functional Testing (inspection only). */
+function drawFunctionalTesting(doc: Doc, tests: FunctionalTestRow[], y: number): number {
+  y = drawSectionHeading(doc, '3. Functional Testing', y, [22, 101, 52]);
+
+  const body = tests.map((t, i) => [
+    String(i + 1),
+    t.test || '',
+    t.result || 'Pending',
+    t.remarks || '',
+  ]);
+
+  autoTable(doc, {
+    startY: y,
+    head: [
+      [
+        { content: 'S.N.', styles: { halign: 'center' as const, cellWidth: 12 } },
+        { content: 'Functional Test', styles: { halign: 'left' as const, cellWidth: 78 } },
+        { content: 'Result', styles: { halign: 'center' as const, cellWidth: 28 } },
+        { content: 'Remarks', styles: { halign: 'left' as const, cellWidth: 64 } },
+      ],
+    ],
+    body,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 2.3,
+      textColor: [30, 41, 59],
+      lineColor: [226, 232, 240],
+      lineWidth: 0.2,
+      valign: 'middle',
+    },
+    headStyles: {
+      fillColor: [22, 101, 52],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8,
+    },
+    margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, bottom: BOTTOM_MARGIN },
+  });
+
+  return (doc as any).lastAutoTable.finalY + 7;
+}
+
+/** Section 4: Conclusion (inspection only). */
+function drawConclusion(doc: Doc, content: SpecContent, y: number): number {
+  const details = content.inspectionDetails;
+  const conclusion = details?.overallConclusion || 'Accepted';
+  const accepted = isAcceptedConclusion(conclusion);
+  const text =
+    details?.conclusionText?.trim() ||
+    buildConclusionText(conclusion, details, content);
+
+  const w = pageWidth(doc);
+  const innerWidth = w - PAGE_MARGIN * 2 - 8;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.8);
+  const lines = doc.splitTextToSize(text, innerWidth);
+  const boxHeight = 14 + lines.length * 4.3;
+
+  y = ensureSpace(doc, y, boxHeight + 16);
+  y = drawSectionHeading(doc, '4. Conclusion', y, [22, 101, 52]);
+
+  doc.setFillColor(accepted ? 240 : 254, accepted ? 253 : 242, accepted ? 244 : 242);
+  doc.setDrawColor(accepted ? 187 : 252, accepted ? 247 : 165, accepted ? 208 : 165);
+  doc.roundedRect(PAGE_MARGIN, y, w - PAGE_MARGIN * 2, boxHeight, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(accepted ? 22 : 185, accepted ? 101 : 28, accepted ? 52 : 28);
+  doc.text(`Inspection Decision: ${conclusion.toUpperCase()}`, PAGE_MARGIN + 4, y + 6);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.8);
+  doc.setTextColor(30, 41, 59);
+  doc.text(lines, PAGE_MARGIN + 4, y + 12);
+
+  return y + boxHeight + 8;
+}
+
+function getImageFormat(dataUrl: string): 'JPEG' | 'PNG' {
+  return dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+}
+
+/** Section 5: Photographs, always placed on the last page(s). */
+function drawPhotographs(doc: Doc, photos: InspectionPhoto[]): void {
+  if (!photos.length) return;
+
+  const w = pageWidth(doc);
+  const h = pageHeight(doc);
+  const cols = 2;
+  const rowsPerPage = 3;
+  const gap = 6;
+  const cellW = (w - PAGE_MARGIN * 2 - gap) / cols;
+
+  let index = 0;
+  let pageIndex = 0;
+
+  while (index < photos.length) {
+    doc.addPage();
+    pageIndex += 1;
+    let y = 20;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(22, 101, 52);
+    doc.text(pageIndex === 1 ? '5. Photographs' : '5. Photographs (continued)', PAGE_MARGIN, y);
+    y += 5;
+    doc.setDrawColor(187, 247, 208);
+    doc.setLineWidth(0.4);
+    doc.line(PAGE_MARGIN, y, w - PAGE_MARGIN, y);
+    y += 6;
+
+    const availableH = h - y - BOTTOM_MARGIN - 6;
+    const cellH = availableH / rowsPerPage;
+    const imageMaxH = cellH - 12;
+
+    for (let r = 0; r < rowsPerPage && index < photos.length; r += 1) {
+      for (let c = 0; c < cols && index < photos.length; c += 1) {
+        const photo = photos[index];
+        const x = PAGE_MARGIN + c * (cellW + gap);
+        const cellY = y + r * cellH;
+
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(x, cellY, cellW, cellH - 2, 1.5, 1.5, 'S');
+
+        // Fit the image inside the cell while preserving its aspect ratio.
+        const ratio = photo.width && photo.height ? photo.width / photo.height : 4 / 3;
+        let imgW = cellW - 6;
+        let imgH = imgW / ratio;
+        if (imgH > imageMaxH) {
+          imgH = imageMaxH;
+          imgW = imgH * ratio;
+        }
+        const imgX = x + (cellW - imgW) / 2;
+        const imgY = cellY + 3 + (imageMaxH - imgH) / 2;
+
+        try {
+          doc.addImage(photo.dataUrl, getImageFormat(photo.dataUrl), imgX, imgY, imgW, imgH);
+        } catch {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(7);
+          doc.setTextColor(148, 163, 184);
+          doc.text('Image could not be embedded', x + cellW / 2, cellY + cellH / 2, { align: 'center' });
+        }
+
+        if (photo.caption?.trim()) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(51, 65, 85);
+          const caption = doc.splitTextToSize(photo.caption.trim(), cellW - 6);
+          doc.text(caption.slice(0, 2), x + cellW / 2, cellY + cellH - 6, { align: 'center' });
+        }
+
+        index += 1;
+      }
+    }
+  }
+}
+
+function drawSignatures(doc: Doc, content: SpecContent, y: number): void {
+  const w = pageWidth(doc);
+  const h = pageHeight(doc);
+  if (y + 40 > h - 18) {
+    doc.addPage();
+    y = 26;
+  }
+
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+
+  const col1X = PAGE_MARGIN + 6;
+  doc.line(col1X, y + 14, col1X + 54, y + 14);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text('Prepared By:', col1X, y + 18);
+  doc.setFont('helvetica', 'normal');
+  doc.text(content.preparedBy || 'Er. Saroj Chalise', col1X, y + 22);
+  doc.text(content.designation || 'Mechanical Engineer', col1X, y + 26);
+  if (content.nec) {
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(content.nec, col1X, y + 30);
+  }
+
+  const col2X = w - PAGE_MARGIN - 60;
+  doc.line(col2X, y + 14, col2X + 54, y + 14);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text('Approved By:', col2X, y + 18);
+}
+
+/** Adds a professional footer with page numbers to every page. */
+function drawPageFooters(doc: Doc, content: SpecContent): void {
+  const total = doc.getNumberOfPages();
+  const w = pageWidth(doc);
+  const h = pageHeight(doc);
+  for (let i = 1; i <= total; i += 1) {
+    doc.setPage(i);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(PAGE_MARGIN, h - 12, w - PAGE_MARGIN, h - 12);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `${content.organizationName || ''}${content.organizationName ? ' — ' : ''}${getStageTitle(
+        resolveStage(content.stage, content)
+      )}`,
+      PAGE_MARGIN,
+      h - 7
+    );
+    doc.text(`Page ${i} of ${total}`, w - PAGE_MARGIN, h - 7, { align: 'right' });
+  }
 }
 
 export function generateSpecificationPDF(
@@ -13,462 +584,135 @@ export function generateSpecificationPDF(
   options: GeneratePDFOptions = {}
 ): void {
   const content = record.content;
-  const isInspect = options.isInspection ?? (record.stage === 'inspected' || content.stage === 'inspected' || Boolean(content.inspectionDetails?.chassisNo));
-  const isEval = !isInspect && (options.isEvaluation ?? (record.stage === 'evaluated' || content.stage === 'evaluated' || Boolean(content.tenderNo || content.make || content.model)));
+  const stage = resolveStage(
+    (options.isInspection ? 'inspected' : options.isEvaluation ? 'evaluated' : record.stage) as
+      | DocumentStage
+      | undefined,
+    content
+  );
+  const isInspect = stage === 'inspected';
+  const isEval = stage === 'evaluated';
 
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  let currentY = 16;
+  let y = drawDocumentHeader(doc, content, stage, 20);
 
-  // Header styling
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(24, 43, 73); // Deep slate navy
-  doc.text((content.organizationName || 'OFFICIAL TECHNICAL SPECIFICATION').toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
-  currentY += 5.5;
+  if (isInspect) {
+    // 1. General Details of Inspection
+    y = drawGeneralDetails(doc, content, y);
 
-  if (isEval) {
-    // User requirement: In Evaluation header put second row as "Technical Evaluation of Bid"
-    doc.setFontSize(11);
-    doc.setTextColor(30, 58, 138); // Deep Navy/Blue
-    doc.text('Technical Evaluation of Bid', pageWidth / 2, currentY, { align: 'center' });
-    currentY += 4.5;
+    // 2. Compliance to the specifications
+    y = drawSectionHeading(doc, '2. Compliance to the Specifications', y, [22, 101, 52]);
+    y = drawSpecificationTable(doc, content, stage, y);
 
-    // Third row: Vehicle Specification Title
-    doc.setFontSize(9.5);
-    doc.setTextColor(51, 65, 85);
-    const subTitle = (content.documentTitle || content.vehicleCategory || 'Technical Specification').toUpperCase();
-    doc.text(subTitle, pageWidth / 2, currentY, { align: 'center' });
-    currentY += 4.5;
-  } else if (isInspect) {
-    doc.setFontSize(10.5);
-    doc.setTextColor(22, 101, 52);
-    const titleText = `VEHICLE TECHNICAL INSPECTION & DELIVERY REPORT: ${(content.vehicleCategory || 'AUTOMOBILE').toUpperCase()}`;
-    doc.text(titleText, pageWidth / 2, currentY, { align: 'center' });
-    currentY += 4.5;
+    // 3. Functional Testing
+    const tests =
+      content.inspectionDetails?.functionalTests?.length
+        ? content.inspectionDetails.functionalTests
+        : [];
+    if (tests.length > 0) {
+      y = drawFunctionalTesting(doc, tests, y);
+    }
+
+    // 4. Conclusion
+    y = drawConclusion(doc, content, y);
+
+    // Signatures before the photograph page so photos remain the last page.
+    drawSignatures(doc, content, y);
+
+    // 5. Photographs (always the last page)
+    drawPhotographs(doc, content.inspectionDetails?.photos || []);
   } else {
-    doc.setFontSize(10.5);
-    doc.setTextColor(51, 65, 85);
-    const titleText = (content.documentTitle || 'Automobile Technical Specification').toUpperCase();
-    doc.text(titleText, pageWidth / 2, currentY, { align: 'center' });
-    currentY += 4.5;
+    y = drawSpecificationTable(doc, content, stage, y);
+    drawSignatures(doc, content, y);
   }
 
-  // Subtitle line
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(100, 116, 139);
-  const subInfoParts = [
-    content.fiscalYear ? `Fiscal Year: ${content.fiscalYear}` : '',
-    (isEval || isInspect) && content.tenderNo ? `Ref/Tender No: ${content.tenderNo}` : '',
-    `Category: ${content.vehicleCategory || 'Automobile'}`
-  ].filter(Boolean);
+  drawPageFooters(doc, content);
 
-  doc.text(subInfoParts.join('  |  '), pageWidth / 2, currentY, { align: 'center' });
-  currentY += 3.5;
-
-  // Optional Make, Model, Origin info line (only shown during Evaluation or Inspection mode)
-  if (isEval || isInspect) {
-    const vehicleMeta = [
-      content.make ? `Make: ${content.make}` : '',
-      content.model ? `Model: ${content.model}` : '',
-      content.countryOfOrigin ? `Origin: ${content.countryOfOrigin}` : ''
-    ].filter(Boolean).join('  |  ');
-
-    if (vehicleMeta) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(71, 85, 105);
-      doc.text(vehicleMeta, pageWidth / 2, currentY, { align: 'center' });
-      currentY += 3.5;
-    }
-  }
-
-  // Bidder identification line
-  if (isEval && content.bidderName) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(30, 58, 138); // Deep blue
-    doc.text(`Bidder / Supplying Firm: ${content.bidderName}`, pageWidth / 2, currentY, { align: 'center' });
-    currentY += 3.5;
-  } else if (isInspect) {
-    const winBidder = content.inspectionDetails?.selectedBidderName || content.bidderName;
-    if (winBidder) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(22, 101, 52); // Deep forest green
-      doc.text(`Selected Winning Bidder: ${winBidder}`, pageWidth / 2, currentY, { align: 'center' });
-      currentY += 3.5;
-    }
-  }
-
-  // Dynamic Custom Header Rows
-  if (content.customHeaderRows && content.customHeaderRows.length > 0) {
-    const validHeaders = content.customHeaderRows.filter((r) => r.label && r.value);
-    if (validHeaders.length > 0) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(71, 85, 105);
-      const customText = validHeaders.map((r) => `${r.label}: ${r.value}`).join('   |   ');
-      doc.text(customText, pageWidth / 2, currentY, { align: 'center' });
-      currentY += 3.5;
-    }
-  }
-
-  // Thin separator rule
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineWidth(0.4);
-  doc.line(14, currentY, pageWidth - 14, currentY);
-  currentY += 5;
-
-  // Physical Inspection Identification box (only in Inspection mode)
-  if (isInspect && content.inspectionDetails) {
-    const insp = content.inspectionDetails;
-    const boxHeight = (insp.selectedBidderName || content.bidderName) ? 17 : 14;
-    doc.setFillColor(240, 253, 244); // light green background
-    doc.setDrawColor(187, 247, 208);
-    doc.roundedRect(14, currentY, pageWidth - 28, boxHeight, 1.5, 1.5, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(22, 101, 52);
-    doc.text('Physical Identification & Delivery Verification:', 17, currentY + 4.5);
-
-    let offset = 8.5;
-    const winBidder = insp.selectedBidderName || content.bidderName;
-    if (winBidder) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.setTextColor(22, 101, 52);
-      doc.text(`Winning Bidder / Supplier: ${winBidder}`, 17, currentY + offset);
-      offset += 3.5;
-    }
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(30, 41, 59);
-    const line1 = [
-      insp.chassisNo ? `Chassis / VIN: ${insp.chassisNo}` : '',
-      insp.engineNo ? `Engine No: ${insp.engineNo}` : '',
-      insp.color ? `Color: ${insp.color}` : '',
-      insp.manufacturingYear ? `Mfg: ${insp.manufacturingYear}` : ''
-    ].filter(Boolean).join('  |  ');
-    doc.text(line1, 17, currentY + offset);
-
-    const line2 = [
-      insp.odometerReading ? `Odometer: ${insp.odometerReading}` : '',
-      insp.batteryDetails ? `Battery: ${insp.batteryDetails}` : '',
-      insp.tyreDetails ? `Tyres: ${insp.tyreDetails}` : '',
-      `Status: ${insp.overallConclusion || 'Accepted'}`
-    ].filter(Boolean).join('  |  ');
-    doc.text(line2, 17, currentY + offset + 3.5);
-
-    currentY += boxHeight + 4;
-  }
-
-  // Build table rows with clean S.N. points as 1, 2, 3...
-  const tableBody: any[] = [];
-  let globalRowCounter = 1;
-
-  const cleanSN = (itemNum: string | undefined): string => {
-    if (!itemNum) return String(globalRowCounter++);
-    const match = itemNum.match(/^\d+\.(\d+)$/);
-    if (match) return match[1];
-    return itemNum;
-  };
-
-  // Ensure Vehicle Scope and Delivery Destination are in the table if not already present
-  const allRowsFlat: { parameter: string; requirement: string }[] = [];
-  content.sections.forEach((sec) => sec.rows.forEach((r) => allRowsFlat.push(r)));
-
-  const hasScopeInTable = allRowsFlat.some(
-    (r) => r.parameter.toLowerCase().includes('scope') || r.parameter.toLowerCase().includes('general')
-  );
-  const hasDeliveryInTable = allRowsFlat.some(
-    (r) => r.parameter.toLowerCase().includes('delivery')
-  );
-
-  // If missing from sections, dynamically include them in the first section of the table
-  const initialExtraRows: any[] = [];
-  if (!hasScopeInTable && content.vehicleDescription) {
-    initialExtraRows.push({
-      itemNumber: cleanSN(undefined),
-      parameter: 'Vehicle Scope & General Description',
-      requirement: content.vehicleDescription,
-      offeredSpecification: isInspect ? 'Verified as per spec' : '',
-      inspectionResult: 'Accepted',
-      remarks: '',
-    });
-  }
-  if (!hasDeliveryInTable && content.deliveryPlace) {
-    initialExtraRows.push({
-      itemNumber: cleanSN(undefined),
-      parameter: 'Delivery Destination',
-      requirement: content.deliveryPlace,
-      offeredSpecification: isInspect ? 'Delivered at site' : '',
-      inspectionResult: 'Accepted',
-      remarks: '',
-    });
-  }
-
-  content.sections.forEach((section, sIdx) => {
-    // Only add section span if multiple sections exist
-    if (content.sections.length > 1) {
-      tableBody.push([
-        {
-          content: section.title.toUpperCase(),
-          colSpan: (isEval || isInspect) ? 5 : 4,
-          styles: {
-            fillColor: [241, 245, 249],
-            textColor: [15, 23, 42],
-            fontStyle: 'bold',
-            fontSize: 8,
-            halign: 'left',
-            cellPadding: 2.5,
-          },
-        },
-      ]);
-    }
-
-    if (sIdx === 0 && initialExtraRows.length > 0) {
-      initialExtraRows.forEach((extraRow) => {
-        if (isInspect) {
-          tableBody.push([
-            extraRow.itemNumber,
-            extraRow.parameter,
-            extraRow.requirement,
-            extraRow.offeredSpecification,
-            extraRow.inspectionResult,
-          ]);
-        } else if (isEval) {
-          tableBody.push([
-            extraRow.itemNumber,
-            extraRow.parameter,
-            extraRow.requirement,
-            extraRow.offeredSpecification,
-            'Complied',
-          ]);
-        } else {
-          tableBody.push([
-            extraRow.itemNumber,
-            extraRow.parameter,
-            extraRow.requirement,
-            extraRow.offeredSpecification,
-          ]);
-        }
-      });
-    }
-
-    section.rows.forEach((row) => {
-      const sn = cleanSN(row.itemNumber);
-      if (isInspect) {
-        tableBody.push([
-          sn,
-          row.parameter || '',
-          row.requirement || '',
-          row.inspectedValue || row.offeredSpecification || 'Verified as per spec',
-          row.inspectionResult || 'Accepted',
-        ]);
-      } else if (isEval) {
-        tableBody.push([
-          sn,
-          row.parameter || '',
-          row.requirement || '',
-          row.offeredSpecification || '',
-          row.remarks || (row.compliance ? `[${row.compliance}]` : ''),
-        ]);
-      } else {
-        // In specification creation mode: NO Compliance column!
-        tableBody.push([
-          sn,
-          row.parameter || '',
-          row.requirement || '',
-          row.offeredSpecification || '',
-        ]);
-      }
-    });
-  });
-
-  const inspectHeaders = [
-    [
-      { content: 'S.N.', styles: { halign: 'center' as const, cellWidth: 12 } },
-      { content: 'Criteria / Parameter', styles: { halign: 'left' as const, cellWidth: 42 } },
-      { content: "Purchaser's Technical Requirement", styles: { halign: 'left' as const, cellWidth: 58 } },
-      { content: 'Inspected / Delivered Specification', styles: { halign: 'left' as const, cellWidth: 42 } },
-      { content: 'Inspection Result', styles: { halign: 'center' as const, cellWidth: 28 } },
-    ],
-  ];
-
-  const evalHeaders = [
-    [
-      { content: 'S.N.', styles: { halign: 'center' as const, cellWidth: 12 } },
-      { content: 'Criteria / Parameter', styles: { halign: 'left' as const, cellWidth: 42 } },
-      { content: "Purchaser's Technical Requirement", styles: { halign: 'left' as const, cellWidth: 60 } },
-      { content: "Bidder's Offered Specification", styles: { halign: 'left' as const, cellWidth: 40 } },
-      { content: 'Compliance', styles: { halign: 'center' as const, cellWidth: 28 } },
-    ],
-  ];
-
-  const specHeaders = [
-    [
-      { content: 'S.N.', styles: { halign: 'center' as const, cellWidth: 14 } },
-      { content: 'Criteria / Parameter', styles: { halign: 'left' as const, cellWidth: 48 } },
-      { content: "Purchaser's Technical Requirement", styles: { halign: 'left' as const, cellWidth: 76 } },
-      { content: "Bidder's Offered Specification", styles: { halign: 'left' as const, cellWidth: 44 } },
-    ],
-  ];
-
-  const tableHeaders = isInspect ? inspectHeaders : isEval ? evalHeaders : specHeaders;
-
-  autoTable(doc, {
-    startY: currentY,
-    head: tableHeaders,
-    body: tableBody,
-    theme: 'grid',
-    styles: {
-      fontSize: 8,
-      cellPadding: 2.5,
-      textColor: [30, 41, 59],
-      lineColor: [226, 232, 240],
-      lineWidth: 0.2,
-      valign: 'middle',
-    },
-    headStyles: {
-      fillColor: [30, 58, 138], // Navy header
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 8,
-    },
-    alternateRowStyles: {
-      fillColor: [255, 255, 255],
-    },
-    margin: { left: 14, right: 14, bottom: 20 },
-  });
-
-  // Check if we need a new page for signatures
-  const finalY = (doc as any).lastAutoTable.finalY + 12;
-  let sigY = finalY;
-
-  if (sigY + 36 > pageHeight - 16) {
-    doc.addPage();
-    sigY = 24;
-  }
-
-  // Signature Block (2 columns: Prepared By & Approved By)
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineWidth(0.3);
-
-  // Col 1: Prepared By
-  const col1X = 20;
-  doc.line(col1X, sigY + 14, col1X + 54, sigY + 14);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(30, 41, 59);
-  doc.text('Prepared By:', col1X, sigY + 18);
-  doc.setFont('helvetica', 'normal');
-  doc.text(content.preparedBy || 'Er. Saroj Chalise', col1X, sigY + 22);
-  doc.text(content.designation || 'Mechanical Engineer / Automobile Instructor', col1X, sigY + 26);
-  if (content.nec) {
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(content.nec, col1X, sigY + 30);
-  }
-
-  // Col 2: Approved By (Only "Approved By:" as requested)
-  const col2X = pageWidth - 74;
-  doc.line(col2X, sigY + 14, col2X + 54, sigY + 14);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(30, 41, 59);
-  doc.text('Approved By:', col2X, sigY + 18);
-
-  // Save PDF
   const safeFilename = (
     ('document_name' in record && record.document_name) ||
     content.documentTitle ||
-    'Technical_Specification'
+    getStageTitle(stage)
   )
     .replace(/[^a-zA-Z0-9_-]/g, '_')
-    .substring(0, 50);
+    .substring(0, 60);
 
   doc.save(`${safeFilename}.pdf`);
 }
 
 /**
- * Generates a clean 1-page Cost Estimate PDF document
- * Matching headers (where Technical Specification is replaced by Cost Estimates),
- * customizable header lines, S.N, Particulars, Qty, Unit, Rate, Amount, Remarks table,
- * and Prepared By / Approved By with underline signature footer.
+ * Generates a clean 1-page Cost Estimate PDF document.
  */
-export function generateCostEstimatePDF(
-  estimate: CostEstimateData,
-  filename?: string
-): void {
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
+export function generateCostEstimatePDF(estimate: CostEstimateData, filename?: string): void {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
+  const w = pageWidth(doc);
+  const h = pageHeight(doc);
   let currentY = 16;
 
-  // 1. Organization Name (First line of the header)
+  // 1. Name of Office
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.setTextColor(24, 43, 73); // Deep slate navy
-  doc.text((estimate.organizationName || 'OFFICIAL PROCURING ENTITY').toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
+  doc.setTextColor(24, 43, 73);
+  doc.text((estimate.organizationName || 'OFFICIAL PROCURING ENTITY').toUpperCase(), w / 2, currentY, {
+    align: 'center',
+  });
   currentY += 5.5;
 
-  // 2. Provision to add few line in header row where user can write anything (after first line of header)
-  if (estimate.headerLines && estimate.headerLines.length > 0) {
+  // 2. Sub division
+  if (estimate.subDivision?.trim()) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(71, 85, 105);
-    estimate.headerLines.forEach((line) => {
-      if (line && line.trim()) {
-        doc.text(line.trim(), pageWidth / 2, currentY, { align: 'center' });
-        currentY += 4;
-      }
-    });
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    doc.text(estimate.subDivision.trim(), w / 2, currentY, { align: 'center' });
+    currentY += 4.2;
   }
 
-  // 3. Document Title: "COST ESTIMATES" (Replacing Technical Specification)
+  // 3. Office location
+  if (estimate.officeLocation?.trim()) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(estimate.officeLocation.trim(), w / 2, currentY, { align: 'center' });
+    currentY += 4.2;
+  }
+
+  // 4. Document title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10.5);
   doc.setTextColor(30, 41, 59);
-  doc.text((estimate.documentTitle || 'COST ESTIMATES').toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
-  currentY += 4.5;
+  doc.text((estimate.documentTitle || 'COST ESTIMATES').toUpperCase(), w / 2, currentY, { align: 'center' });
+  currentY += 4.8;
 
-  // 4. Subtitle line: Fiscal Year, Category, Date
+  // 5. Project name & fiscal year
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(100, 116, 139);
-  const subInfo = [
-    estimate.fiscalYear ? `Fiscal Year: ${estimate.fiscalYear}` : '',
-    `Category: ${estimate.vehicleCategory || 'Automobile'}`,
-    estimate.updated_at ? `Date: ${estimate.updated_at.slice(0, 10)}` : '',
-  ].filter(Boolean).join('   |   ');
-  if (subInfo) {
-    doc.text(subInfo, pageWidth / 2, currentY, { align: 'center' });
-    currentY += 3.5;
+  doc.setFontSize(8.4);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Project Name: ${estimate.projectName?.trim() || '—'}`, w / 2, currentY, { align: 'center' });
+  currentY += 4;
+  doc.text(`Fiscal Year: ${estimate.fiscalYear || '2083/84'}`, w / 2, currentY, { align: 'center' });
+  currentY += 4;
+
+  // 6. User-defined additional header lines
+  if (estimate.headerLines && estimate.headerLines.length > 0) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.2);
+    doc.setTextColor(71, 85, 105);
+    estimate.headerLines.forEach((line) => {
+      if (line && line.trim()) {
+        doc.text(line.trim(), w / 2, currentY, { align: 'center' });
+        currentY += 3.8;
+      }
+    });
   }
 
   // Thin separator rule
   doc.setDrawColor(203, 213, 225);
   doc.setLineWidth(0.4);
-  doc.line(14, currentY, pageWidth - 14, currentY);
+  doc.line(PAGE_MARGIN, currentY, w - PAGE_MARGIN, currentY);
   currentY += 5;
 
-  // 5. Table with columns: S.N, Particulars, Qty, Unit, Rate, Amount, Remarks
-  // User Rule: Only non-vattable items are written as "Non VATTABLE as per the prevailing laws" in Remarks. Vattable items have no remarks.
+  // Table
   const head = [
     [
       { content: 'S.N.', styles: { halign: 'center' as const, cellWidth: 10 } },
@@ -482,30 +726,29 @@ export function generateCostEstimatePDF(
   ];
 
   const body: any[] = estimate.items.map((item, idx) => {
-    const remarks = item.isVatApplicable === false 
-      ? 'Non VATTABLE as per the prevailing laws' 
-      : '';
+    const remarks = item.isVatApplicable === false ? 'Non VATTABLE as per the prevailing laws' : '';
     return [
       item.sn || String(idx + 1),
       item.particulars || '',
       String(item.qty || 1),
       item.unit || 'Number',
       Number(item.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
-      Number(item.amount || (item.qty * item.rate) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+      Number(item.amount || item.qty * item.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }),
       remarks,
     ];
   });
 
-  // Calculations for VAT and Totals
   const nonVattableItems = estimate.items.filter((it) => it.isVatApplicable === false);
   const hasNonVattable = nonVattableItems.length > 0;
-  const subTotal = estimate.items.reduce((sum, it) => sum + (it.amount || (it.qty * it.rate)), 0);
-  const taxableAmount = estimate.items.reduce((sum, it) => sum + (it.isVatApplicable !== false ? (it.amount || (it.qty * it.rate)) : 0), 0);
+  const subTotal = estimate.items.reduce((sum, it) => sum + (it.amount || it.qty * it.rate), 0);
+  const taxableAmount = estimate.items.reduce(
+    (sum, it) => sum + (it.isVatApplicable !== false ? it.amount || it.qty * it.rate : 0),
+    0
+  );
   const vatAmount = Math.round(taxableAmount * 0.13 * 100) / 100;
   const grandTotal = Math.round((subTotal + vatAmount) * 100) / 100;
 
   if (!hasNonVattable) {
-    // If no any non vattable items: just sum sub total, calculate vat, and add to sub total to get grand total
     body.push([
       {
         content: 'SUB-TOTAL (NPR):',
@@ -527,7 +770,12 @@ export function generateCostEstimatePDF(
       },
       {
         content: vatAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
-        styles: { halign: 'right' as const, fontStyle: 'bold', fillColor: [240, 253, 244], textColor: [22, 101, 52] },
+        styles: {
+          halign: 'right' as const,
+          fontStyle: 'bold',
+          fillColor: [240, 253, 244],
+          textColor: [22, 101, 52],
+        },
       },
       { content: '', styles: { fillColor: [240, 253, 244] } },
     ]);
@@ -540,13 +788,24 @@ export function generateCostEstimatePDF(
       },
       {
         content: grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
-        styles: { halign: 'right' as const, fontStyle: 'bold', fillColor: [241, 245, 249], textColor: [22, 101, 52] },
+        styles: {
+          halign: 'right' as const,
+          fontStyle: 'bold',
+          fillColor: [241, 245, 249],
+          textColor: [22, 101, 52],
+        },
       },
-      { content: 'NPR', styles: { halign: 'center' as const, fillColor: [241, 245, 249], fontStyle: 'bold', fontSize: 7.5 } },
+      {
+        content: 'NPR',
+        styles: {
+          halign: 'center' as const,
+          fillColor: [241, 245, 249],
+          fontStyle: 'bold',
+          fontSize: 7.5,
+        },
+      },
     ]);
   } else {
-    // Otherwise: Sub-total is sum of all total, taxable amount is sum of all VAT applicable amount,
-    // VAT is 13 % on taxable amount and grand total is sub total plus VAT.
     body.push([
       {
         content: 'SUB-TOTAL (NPR):',
@@ -581,9 +840,22 @@ export function generateCostEstimatePDF(
       },
       {
         content: vatAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
-        styles: { halign: 'right' as const, fontStyle: 'bold', fillColor: [240, 253, 244], textColor: [22, 101, 52] },
+        styles: {
+          halign: 'right' as const,
+          fontStyle: 'bold',
+          fillColor: [240, 253, 244],
+          textColor: [22, 101, 52],
+        },
       },
-      { content: '13% on Taxable', styles: { halign: 'center' as const, fillColor: [240, 253, 244], fontSize: 6.5, textColor: [22, 101, 52] } },
+      {
+        content: '13% on Taxable',
+        styles: {
+          halign: 'center' as const,
+          fillColor: [240, 253, 244],
+          fontSize: 6.5,
+          textColor: [22, 101, 52],
+        },
+      },
     ]);
 
     body.push([
@@ -594,9 +866,22 @@ export function generateCostEstimatePDF(
       },
       {
         content: grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
-        styles: { halign: 'right' as const, fontStyle: 'bold', fillColor: [241, 245, 249], textColor: [22, 101, 52] },
+        styles: {
+          halign: 'right' as const,
+          fontStyle: 'bold',
+          fillColor: [241, 245, 249],
+          textColor: [22, 101, 52],
+        },
       },
-      { content: 'NPR', styles: { halign: 'center' as const, fillColor: [241, 245, 249], fontStyle: 'bold', fontSize: 7.5 } },
+      {
+        content: 'NPR',
+        styles: {
+          halign: 'center' as const,
+          fillColor: [241, 245, 249],
+          fontStyle: 'bold',
+          fontSize: 7.5,
+        },
+      },
     ]);
   }
 
@@ -614,40 +899,33 @@ export function generateCostEstimatePDF(
       valign: 'middle',
     },
     headStyles: {
-      fillColor: [30, 58, 138], // Navy header
+      fillColor: [30, 58, 138],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 7.5,
     },
-    margin: { left: 14, right: 14, bottom: 20 },
+    margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, bottom: BOTTOM_MARGIN },
   });
 
   const finalY = (doc as any).lastAutoTable.finalY + 5;
-  
-  // In Words Box
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(30, 41, 59);
-  doc.text('In Words:', 14, finalY);
+  doc.text('In Words:', PAGE_MARGIN, finalY);
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
-  const wordsText = numberToWordsNPR(grandTotal);
-  doc.text(wordsText, 30, finalY);
+  doc.text(numberToWordsNPR(grandTotal), PAGE_MARGIN + 16, finalY);
 
   let sigY = finalY + 12;
-
-  // Single page guarantee: keep footer within page
-  if (sigY + 36 > pageHeight - 14) {
-    sigY = pageHeight - 38;
+  if (sigY + 36 > h - 14) {
+    sigY = h - 38;
   }
 
-  // Signature Block: Prepared By & Approved By with underline
   doc.setDrawColor(203, 213, 225);
   doc.setLineWidth(0.3);
 
-  // Col 1: Prepared By
-  const col1X = 20;
+  const col1X = PAGE_MARGIN + 6;
   doc.line(col1X, sigY + 12, col1X + 54, sigY + 12);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
@@ -662,8 +940,7 @@ export function generateCostEstimatePDF(
     doc.text(estimate.nec, col1X, sigY + 28);
   }
 
-  // Col 2: Approved By (with underline signature line)
-  const col2X = pageWidth - 74;
+  const col2X = w - PAGE_MARGIN - 60;
   doc.line(col2X, sigY + 12, col2X + 54, sigY + 12);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
@@ -672,7 +949,7 @@ export function generateCostEstimatePDF(
 
   const safeName = (filename || `${estimate.organizationName}_Cost_Estimate`)
     .replace(/[^a-zA-Z0-9_-]/g, '_')
-    .substring(0, 50);
+    .substring(0, 60);
 
   doc.save(`${safeName}.pdf`);
 }

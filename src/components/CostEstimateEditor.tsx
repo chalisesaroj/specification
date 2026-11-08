@@ -45,6 +45,23 @@ export const CostEstimateEditor: React.FC<CostEstimateEditorProps> = ({
   const [organizationName, setOrganizationName] = useState(
     existingEstimate?.organizationName || record.organization_name || 'Pokhara Metropolitan City'
   );
+  const [subDivision, setSubDivision] = useState(
+    existingEstimate?.subDivision ||
+      record.content.subDivision ||
+      'Infrastructure Development & Procurement Division'
+  );
+  const [officeLocation, setOfficeLocation] = useState(
+    existingEstimate?.officeLocation ||
+      record.content.officeLocation ||
+      'Pokhara, Kaski, Gandaki Province'
+  );
+  const [projectName, setProjectName] = useState(
+    existingEstimate?.projectName ||
+      record.content.projectName ||
+      record.vehicle_description ||
+      record.vehicle_category ||
+      ''
+  );
   const [documentTitle, setDocumentTitle] = useState(
     existingEstimate?.documentTitle || 'Cost Estimates'
   );
@@ -60,10 +77,7 @@ export const CostEstimateEditor: React.FC<CostEstimateEditorProps> = ({
     if (existingEstimate?.headerLines && existingEstimate.headerLines.length > 0) {
       return existingEstimate.headerLines;
     }
-    return [
-      'Office of the Municipal Executive, Gandaki Province',
-      'Infrastructure Development & Procurement Division'
-    ];
+    return [];
   });
 
   // Table items: S.N, Particulars, Qty, Unit, Rate, Amount, VAT Applicable, Remarks
@@ -219,6 +233,9 @@ export const CostEstimateEditor: React.FC<CostEstimateEditorProps> = ({
     return {
       documentTitle,
       organizationName,
+      subDivision: subDivision.trim(),
+      officeLocation: officeLocation.trim(),
+      projectName: projectName.trim(),
       headerLines: headerLines.filter((l) => l.trim() !== ''),
       fiscalYear,
       vehicleCategory,
@@ -371,6 +388,24 @@ export const CostEstimateEditor: React.FC<CostEstimateEditorProps> = ({
                 className="w-full text-center text-lg sm:text-xl font-bold uppercase tracking-wide border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none py-1 text-slate-900 font-sans"
               />
 
+              {/* Line 2: Sub division */}
+              <input
+                type="text"
+                value={subDivision}
+                onChange={(e) => setSubDivision(e.target.value)}
+                placeholder="Sub division (e.g. Infrastructure Development & Procurement Division)"
+                className="w-full text-center text-xs font-sans text-slate-600 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none py-0.5"
+              />
+
+              {/* Line 3: Office location */}
+              <input
+                type="text"
+                value={officeLocation}
+                onChange={(e) => setOfficeLocation(e.target.value)}
+                placeholder="Office location (e.g. Pokhara, Kaski, Gandaki Province)"
+                className="w-full text-center text-[11px] font-sans text-slate-500 border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none py-0.5"
+              />
+
               {/* Provision to add few line in header row where user can write anything (AFTER first line of header) */}
               <div className="space-y-1 pt-0.5">
                 {headerLines.map((line, idx) => (
@@ -416,6 +451,16 @@ export const CostEstimateEditor: React.FC<CostEstimateEditorProps> = ({
 
               {/* Subtitle row */}
               <div className="pt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-sans text-slate-600">
+                <div className="flex items-center space-x-1">
+                  <span className="font-semibold text-slate-700">Project Name:</span>
+                  <input
+                    type="text"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="Project name"
+                    className="w-56 px-1.5 py-0.5 border border-slate-300 rounded text-xs"
+                  />
+                </div>
                 <div className="flex items-center space-x-1">
                   <span className="font-semibold text-slate-700">Fiscal Year:</span>
                   <input

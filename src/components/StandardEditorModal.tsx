@@ -167,6 +167,9 @@ export const StandardEditorModal: React.FC<StandardEditorModalProps> = ({
         content: {
           documentTitle: `Standard Technical Specification of ${title.trim()}`,
           organizationName: 'Standard Municipal Engineering Department',
+          subDivision: 'Infrastructure Development & Procurement Division',
+          officeLocation: 'Pokhara, Kaski, Gandaki Province',
+          projectName: `Procurement of ${title.trim()}`,
           fiscalYear: '2083/84',
           vehicleCategory: category,
           vehicleDescription: description.trim() || `${category} standard configuration`,

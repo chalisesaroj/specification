@@ -1,18 +1,29 @@
 import React from 'react';
-import { 
-  X, 
-  Download, 
-  Printer, 
-  Edit3, 
-  Calendar, 
-  Building2, 
+import {
+  X,
+  Download,
+  Printer,
+  Edit3,
   FileText,
-  ShieldCheck,
   Trash2,
-  Calculator
+  Calculator,
+  Camera,
 } from 'lucide-react';
-import { WorkRecord, StandardSpecification, SpecContent } from '../types/spec';
+import {
+  WorkRecord,
+  StandardSpecification,
+  SpecContent,
+  SpecRow,
+  DocumentStage,
+} from '../types/spec';
 import { generateSpecificationPDF } from '../utils/pdfGenerator';
+import {
+  getStageTitle,
+  resolveStage,
+  getGeneralInspectionRows,
+  buildConclusionText,
+  isAcceptedConclusion,
+} from '../utils/documentMeta';
 
 interface DocumentViewerProps {
   document: WorkRecord | StandardSpecification;
@@ -21,6 +32,36 @@ interface DocumentViewerProps {
   onDelete?: () => void;
   onCostEstimate?: () => void;
 }
+
+function complianceOf(row: SpecRow): string {
+  if (row.compliance) return row.compliance;
+  switch (row.inspectionResult) {
+    case 'Rejected':
+      return 'Not Complied';
+    case 'Conditional':
+      return 'Partial';
+    case 'Pending':
+      return 'Pending';
+    default:
+      return 'Complied';
+  }
+}
+
+const complianceClass = (value: string) =>
+  value === 'Complied'
+    ? 'bg-emerald-100 text-emerald-800'
+    : value === 'Not Complied'
+    ? 'bg-red-100 text-red-800'
+    : value === 'Partial'
+    ? 'bg-amber-100 text-amber-800'
+    : 'bg-slate-100 text-slate-700';
+
+const resultClass = (value: string) =>
+  value === 'Passed'
+    ? 'bg-emerald-100 text-emerald-800'
+    : value === 'Failed'
+    ? 'bg-red-100 text-red-800'
+    : 'bg-amber-100 text-amber-800';
 
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   document,
@@ -31,8 +72,22 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 }) => {
   const isWorkRecord = 'document_name' in document;
   const content: SpecContent = document.content;
-  const isInspection = (isWorkRecord && (document as WorkRecord).stage === 'inspected') || Boolean(content.inspectionDetails?.chassisNo);
-  const isEvaluation = !isInspection && ((isWorkRecord && (document as WorkRecord).stage === 'evaluated') || Boolean(content.bidderName || content.tenderNo || content.make));
+  const stage: DocumentStage = resolveStage(
+    isWorkRecord ? (document as WorkRecord).stage : undefined,
+    content
+  );
+  const isInspection = stage === 'inspected';
+  const isEvaluation = stage === 'evaluated';
+  const details = content.inspectionDetails;
+  const photos = details?.photos || [];
+  const functionalTests = details?.functionalTests || [];
+  const conclusion = details?.overallConclusion || 'Accepted';
+  const accepted = isAcceptedConclusion(conclusion);
+  const conclusionText =
+    details?.conclusionText?.trim() || buildConclusionText(conclusion, details, content);
+  const generalRows = getGeneralInspectionRows(content).filter(
+    (r) => r.label?.trim() || r.value?.trim()
+  );
   const totalSpecs = content.sections.reduce((acc, s) => acc + s.rows.length, 0);
 
   const handlePrint = () => {
@@ -60,7 +115,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 {isWorkRecord ? (document as WorkRecord).document_name : document.title}
               </h2>
               <p className="text-[10px] text-slate-300">
-                {isWorkRecord ? 'Permanent Work Record Snapshot' : `Standard Baseline v${(document as StandardSpecification).version}`}
+                {isWorkRecord
+                  ? 'Permanent Work Record Snapshot'
+                  : `Standard Baseline v${(document as StandardSpecification).version}`}
               </p>
             </div>
           </div>
@@ -127,48 +184,54 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         </div>
 
         {/* Document Body (Print friendly paper style) */}
-        <div className="p-8 sm:p-12 overflow-y-auto flex-1 bg-white space-y-6">
+        <div className="p-8 sm:p-12 overflow-y-auto flex-1 bg-white space-y-6 print:overflow-visible">
           {/* Official Document Header */}
           <div className="text-center border-b-2 border-slate-800 pb-5">
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight">
-              {content.organizationName || 'OFFICIAL PROCURING ENTITY'}
+              {content.organizationName || 'NAME OF OFFICE'}
             </h1>
-
-            {isEvaluation ? (
-              <>
-                <h2 className="text-base sm:text-lg font-bold text-indigo-900 mt-1 tracking-wide">
-                  Technical Evaluation of Bid
-                </h2>
-                <h3 className="text-xs sm:text-sm font-semibold text-slate-700 uppercase mt-0.5">
-                  {content.documentTitle || content.vehicleCategory || 'TECHNICAL SPECIFICATION'}
-                </h3>
-              </>
-            ) : isInspection ? (
-              <>
-                <h2 className="text-base sm:text-lg font-bold text-emerald-900 mt-1 tracking-wide">
-                  Vehicle Technical Inspection & Delivery Report
-                </h2>
-                <h3 className="text-xs sm:text-sm font-semibold text-slate-700 uppercase mt-0.5">
-                  {content.documentTitle || content.vehicleCategory || 'TECHNICAL SPECIFICATION'}
-                </h3>
-              </>
-            ) : (
-              <h2 className="text-sm sm:text-base font-bold text-slate-800 uppercase mt-1 tracking-wide">
-                {content.documentTitle || 'TECHNICAL SPECIFICATION'}
-              </h2>
+            {content.subDivision?.trim() && (
+              <p className="text-sm sm:text-base font-semibold text-slate-800 mt-0.5">
+                {content.subDivision}
+              </p>
             )}
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-2 text-xs font-medium text-slate-600">
-              {content.fiscalYear && <span>Fiscal Year: <strong>{content.fiscalYear}</strong></span>}
-              {content.tenderNo && <span>| Tender Ref: <strong>{content.tenderNo}</strong></span>}
-              <span>| Vehicle Category: <strong>{content.vehicleCategory}</strong></span>
-              {content.bidderName && (
-                <span className="bg-indigo-50 text-indigo-900 px-2 py-0.5 rounded border border-indigo-200 font-bold">
-                  Bidder: {content.bidderName}
-                </span>
+            {content.officeLocation?.trim() && (
+              <p className="text-xs sm:text-sm text-slate-600">{content.officeLocation}</p>
+            )}
+
+            <h2
+              className={`text-sm sm:text-lg font-bold uppercase mt-2 tracking-wide ${
+                isInspection
+                  ? 'text-emerald-800'
+                  : isEvaluation
+                  ? 'text-indigo-900'
+                  : 'text-slate-800'
+              }`}
+            >
+              {getStageTitle(stage)}
+            </h2>
+
+            <div className="mt-2 text-xs text-slate-700 space-y-0.5">
+              <p>
+                <span className="font-semibold">Project Name:</span>{' '}
+                {content.projectName?.trim() || '—'}
+              </p>
+              <p>
+                <span className="font-semibold">Fiscal Year:</span>{' '}
+                {content.fiscalYear || '2083/84'}
+              </p>
+              {(isEvaluation || isInspection) && (
+                <>
+                  <p>
+                    <span className="font-semibold">Bidder Name:</span>{' '}
+                    {details?.selectedBidderName || content.bidderName || '—'}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Reference Tender Name:</span>{' '}
+                    {content.tenderNo || '—'}
+                  </p>
+                </>
               )}
-              {content.make && <span>| Make: <strong>{content.make}</strong></span>}
-              {content.model && <span>| Model: <strong>{content.model}</strong></span>}
-              {content.countryOfOrigin && <span>| Origin: <strong>{content.countryOfOrigin}</strong></span>}
             </div>
 
             {/* Custom Header Rows if present */}
@@ -186,133 +249,254 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             )}
           </div>
 
-          {/* Physical Vehicle Inspection Details (If Inspected) */}
-          {content.inspectionDetails && (content.stage === 'inspected' || content.inspectionDetails.chassisNo) && (
-            <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-lg text-xs leading-relaxed space-y-2">
-              <div className="flex items-center justify-between border-b border-emerald-200 pb-1.5">
-                <span className="font-bold text-emerald-900 uppercase">Physical Vehicle Delivery Inspection</span>
-                <span className="font-bold px-2 py-0.5 bg-emerald-600 text-white rounded text-[10px]">
-                  {content.inspectionDetails.overallConclusion || 'Accepted'}
-                </span>
-              </div>
-              {(content.inspectionDetails.selectedBidderName || content.bidderName) && (
-                <div className="bg-white p-2 rounded border border-emerald-200 text-xs">
-                  <span className="font-bold text-emerald-900">Selected Winning Bidder:</span>{' '}
-                  <strong className="text-slate-900">{content.inspectionDetails.selectedBidderName || content.bidderName}</strong>
-                </div>
-              )}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                <div><span className="font-semibold text-slate-500">Chassis / VIN:</span> <span className="font-mono font-bold text-slate-800">{content.inspectionDetails.chassisNo || '—'}</span></div>
-                <div><span className="font-semibold text-slate-500">Engine No:</span> <span className="font-mono font-bold text-slate-800">{content.inspectionDetails.engineNo || '—'}</span></div>
-                <div><span className="font-semibold text-slate-500">Color:</span> <span className="text-slate-800">{content.inspectionDetails.color || '—'}</span></div>
-                <div><span className="font-semibold text-slate-500">Mfg Year:</span> <span className="text-slate-800">{content.inspectionDetails.manufacturingYear || '—'}</span></div>
-                <div><span className="font-semibold text-slate-500">Odometer:</span> <span className="text-slate-800">{content.inspectionDetails.odometerReading || '—'}</span></div>
-                <div><span className="font-semibold text-slate-500">Battery:</span> <span className="text-slate-800">{content.inspectionDetails.batteryDetails || '—'}</span></div>
-                <div className="col-span-2"><span className="font-semibold text-slate-500">Tyres:</span> <span className="text-slate-800">{content.inspectionDetails.tyreDetails || '—'}</span></div>
+          {/* 1. General Details of Inspection */}
+          {isInspection && (
+            <div className="space-y-2">
+              <h2 className="text-base sm:text-lg font-bold text-emerald-900 border-b-2 border-emerald-700 pb-1">
+                1. General Details of Inspection
+              </h2>
+              <table className="w-full text-xs border border-slate-300 border-collapse">
+                <tbody>
+                  {Array.from({ length: Math.ceil(generalRows.length / 2) }).map((_, rIdx) => {
+                    const left = generalRows[rIdx * 2];
+                    const right = generalRows[rIdx * 2 + 1];
+                    return (
+                      <tr key={rIdx}>
+                        <td className="py-1.5 px-2 border border-slate-200 bg-emerald-50/60 font-semibold text-emerald-900 w-1/5">
+                          {left?.label || ''}
+                        </td>
+                        <td className="py-1.5 px-2 border border-slate-200 text-slate-800 w-1/3">
+                          {left?.value || '—'}
+                        </td>
+                        <td className="py-1.5 px-2 border border-slate-200 bg-emerald-50/60 font-semibold text-emerald-900 w-1/5">
+                          {right?.label || ''}
+                        </td>
+                        <td className="py-1.5 px-2 border border-slate-200 text-slate-800">
+                          {right ? right.value || '—' : ''}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* 2. Compliance to the Specifications */}
+          <div className="space-y-2">
+            {isInspection && (
+              <h2 className="text-base sm:text-lg font-bold text-emerald-900 border-b-2 border-emerald-700 pb-1">
+                2. Compliance to the Specifications
+              </h2>
+            )}
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border border-slate-300 border-collapse">
+                <thead>
+                  <tr
+                    className={`font-bold text-white ${
+                      isInspection ? 'bg-emerald-800' : 'bg-slate-900'
+                    }`}
+                  >
+                    <th className="py-2.5 px-3 border border-slate-700 text-center w-14">S.N.</th>
+                    <th
+                      className={`py-2.5 px-3 border border-slate-700 text-left ${
+                        isEvaluation || isInspection ? 'w-1/4' : 'w-1/3'
+                      }`}
+                    >
+                      Criteria / Component
+                    </th>
+                    <th
+                      className={`py-2.5 px-3 border border-slate-700 text-left ${
+                        isEvaluation || isInspection ? 'w-1/3' : 'w-5/12'
+                      }`}
+                    >
+                      Requirement as per Specification
+                    </th>
+                    <th
+                      className={`py-2.5 px-3 border border-slate-700 text-left ${
+                        isEvaluation || isInspection ? 'w-1/4' : 'w-1/3'
+                      }`}
+                    >
+                      {isInspection
+                        ? 'Delivered / Inspected Specification'
+                        : "Bidder's Offered Specification"}
+                    </th>
+                    {(isEvaluation || isInspection) && (
+                      <th className="py-2.5 px-3 border border-slate-700 text-center w-24">
+                        Compliance
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {content.sections.map((section) => (
+                    <React.Fragment key={section.id}>
+                      {content.sections.length > 1 && (
+                        <tr className="bg-slate-100 font-bold text-slate-900">
+                          <td
+                            colSpan={isEvaluation || isInspection ? 5 : 4}
+                            className="py-2 px-3 border border-slate-300"
+                          >
+                            {section.title.toUpperCase()}
+                          </td>
+                        </tr>
+                      )}
+                      {section.rows.map((row, rIdx) => (
+                        <tr key={row.id} className="hover:bg-slate-50/50">
+                          <td className="py-2 px-3 border border-slate-200 text-center font-mono font-medium text-slate-700">
+                            {cleanSN(row.itemNumber, rIdx + 1)}
+                          </td>
+                          <td className="py-2 px-3 border border-slate-200 font-medium text-slate-900">
+                            {row.parameter}
+                          </td>
+                          <td className="py-2 px-3 border border-slate-200 text-slate-700 leading-relaxed">
+                            {row.requirement}
+                          </td>
+                          <td className="py-2 px-3 border border-slate-200 text-slate-600">
+                            {isInspection
+                              ? row.inspectedValue || row.offeredSpecification || '—'
+                              : row.offeredSpecification || '—'}
+                          </td>
+                          {(isEvaluation || isInspection) && (
+                            <td className="py-2 px-3 border border-slate-200 text-center">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${complianceClass(
+                                  complianceOf(row)
+                                )}`}
+                              >
+                                {complianceOf(row)}
+                              </span>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 3. Functional Testing */}
+          {isInspection && functionalTests.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="text-base sm:text-lg font-bold text-emerald-900 border-b-2 border-emerald-700 pb-1">
+                3. Functional Testing
+              </h2>
+              <table className="w-full text-xs border border-slate-300 border-collapse">
+                <thead>
+                  <tr className="bg-emerald-800 text-white font-bold">
+                    <th className="py-2 px-2 border border-emerald-700 text-center w-12">S.N.</th>
+                    <th className="py-2 px-3 border border-emerald-700 text-left">Functional Test</th>
+                    <th className="py-2 px-2 border border-emerald-700 text-center w-28">Result</th>
+                    <th className="py-2 px-3 border border-emerald-700 text-left w-1/4">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {functionalTests.map((test, idx) => (
+                    <tr key={test.id}>
+                      <td className="py-1.5 px-2 border border-slate-200 text-center font-mono text-slate-700">
+                        {idx + 1}
+                      </td>
+                      <td className="py-1.5 px-3 border border-slate-200 text-slate-800">{test.test}</td>
+                      <td className="py-1.5 px-2 border border-slate-200 text-center">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${resultClass(
+                            test.result || 'Pending'
+                          )}`}
+                        >
+                          {test.result || 'Pending'}
+                        </span>
+                      </td>
+                      <td className="py-1.5 px-3 border border-slate-200 text-slate-600">
+                        {test.remarks || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* 4. Conclusion */}
+          {isInspection && (
+            <div className="space-y-2">
+              <h2 className="text-base sm:text-lg font-bold text-emerald-900 border-b-2 border-emerald-700 pb-1">
+                4. Conclusion
+              </h2>
+              <div
+                className={`p-3.5 rounded-lg border text-xs leading-relaxed space-y-1.5 ${
+                  accepted
+                    ? 'bg-emerald-50 border-emerald-200 text-slate-800'
+                    : 'bg-red-50 border-red-200 text-slate-800'
+                }`}
+              >
+                <p
+                  className={`font-bold uppercase text-[11px] ${
+                    accepted ? 'text-emerald-900' : 'text-red-900'
+                  }`}
+                >
+                  Inspection Decision: {conclusion}
+                </p>
+                <p>{conclusionText}</p>
               </div>
             </div>
           )}
 
-          {/* Technical Specifications Table */}
-          {(() => {
-            const isInspect = Boolean(content.stage === 'inspected' || content.inspectionDetails?.chassisNo);
-            const hasEval = !isInspect && Boolean(content.tenderNo || content.make || content.model || content.countryOfOrigin);
-            return (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border border-slate-300 border-collapse">
-                  <thead>
-                    <tr className="bg-slate-900 text-white font-bold">
-                      <th className="py-2.5 px-3 border border-slate-700 text-center w-14">S.N.</th>
-                      <th className={`py-2.5 px-3 border border-slate-700 text-left ${hasEval || isInspect ? 'w-1/4' : 'w-1/3'}`}>
-                        Criteria / Component
-                      </th>
-                      <th className={`py-2.5 px-3 border border-slate-700 text-left ${hasEval || isInspect ? 'w-1/3' : 'w-5/12'}`}>
-                        Requirement as per Specification
-                      </th>
-                      <th className={`py-2.5 px-3 border border-slate-700 text-left ${hasEval || isInspect ? 'w-1/4' : 'w-1/3'}`}>
-                        {isInspect ? 'Delivered / Inspected Specification' : "Bidder's Offered Specification"}
-                      </th>
-                      {isInspect && (
-                        <th className="py-2.5 px-3 border border-slate-700 text-center w-24">Inspection Result</th>
-                      )}
-                      {hasEval && (
-                        <th className="py-2.5 px-3 border border-slate-700 text-center w-24">Compliance</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {content.sections.map((section) => (
-                      <React.Fragment key={section.id}>
-                        {content.sections.length > 1 && (
-                          <tr className="bg-slate-100 font-bold text-slate-900">
-                            <td colSpan={hasEval || isInspect ? 5 : 4} className="py-2 px-3 border border-slate-300">
-                              {section.title.toUpperCase()}
-                            </td>
-                          </tr>
-                        )}
-                        {section.rows.map((row, rIdx) => (
-                          <tr key={row.id} className="hover:bg-slate-50/50">
-                            <td className="py-2 px-3 border border-slate-200 text-center font-mono font-medium text-slate-700">
-                              {cleanSN(row.itemNumber, rIdx + 1)}
-                            </td>
-                            <td className="py-2 px-3 border border-slate-200 font-medium text-slate-900">
-                              {row.parameter}
-                            </td>
-                            <td className="py-2 px-3 border border-slate-200 text-slate-700 leading-relaxed">
-                              {row.requirement}
-                            </td>
-                            <td className="py-2 px-3 border border-slate-200 text-slate-600">
-                              {isInspect ? (row.inspectedValue || row.offeredSpecification || '—') : (row.offeredSpecification || '—')}
-                            </td>
-                            {isInspect && (
-                              <td className="py-2 px-3 border border-slate-200 text-center">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  row.inspectionResult === 'Conditional' ? 'bg-amber-100 text-amber-800' :
-                                  row.inspectionResult === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                  'bg-emerald-100 text-emerald-800'
-                                }`}>
-                                  {row.inspectionResult || 'Accepted'}
-                                </span>
-                              </td>
-                            )}
-                            {hasEval && (
-                              <td className="py-2 px-3 border border-slate-200 text-center">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  row.compliance === 'Complied' ? 'bg-emerald-100 text-emerald-800' :
-                                  row.compliance === 'Not Complied' ? 'bg-red-100 text-red-800' :
-                                  'bg-slate-100 text-slate-700'
-                                }`}>
-                                  {row.compliance || 'Complied'}
-                                </span>
-                              </td>
-                            )}
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })()}
-
           {/* Official Signatures Block */}
-          <div className="pt-16 grid grid-cols-2 gap-12 text-center text-xs text-slate-700">
+          <div className="pt-12 grid grid-cols-2 gap-12 text-center text-xs text-slate-700">
             <div className="border-t border-slate-400 pt-2">
-              <p className="font-bold text-slate-900">{content.preparedBy || 'Er. Saroj Chalise'}</p>
-              <p className="text-slate-600">{content.designation || 'Mechanical Engineer / Automobile Instructor'}</p>
-              <p className="text-[10px] text-slate-500">{content.nec || 'NEC Reg. No.: 2016, Mechanical Category A'}</p>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider mt-1 font-semibold">Prepared By</p>
+              <p className="font-bold text-slate-900">
+                {content.preparedBy || 'Er. Saroj Chalise'}
+              </p>
+              <p className="text-slate-600">
+                {content.designation || 'Mechanical Engineer / Automobile Instructor'}
+              </p>
+              <p className="text-[10px] text-slate-500">
+                {content.nec || 'NEC Reg. No.: 2016, Mechanical Category A'}
+              </p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider mt-1 font-semibold">
+                Prepared By
+              </p>
             </div>
             <div className="border-t border-slate-400 pt-2">
-              <p className="text-xs text-slate-900 font-bold uppercase tracking-wider mt-2">Approved By</p>
+              <p className="text-xs text-slate-900 font-bold uppercase tracking-wider mt-2">
+                Approved By
+              </p>
             </div>
           </div>
+
+          {/* 5. Photographs — always the last page of the report */}
+          {isInspection && photos.length > 0 && (
+            <div className="space-y-2 print-break-before">
+              <h2 className="text-base sm:text-lg font-bold text-emerald-900 border-b-2 border-emerald-700 pb-1 flex items-center space-x-1.5">
+                <Camera className="w-4 h-4" />
+                <span>5. Photographs</span>
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                {photos.map((photo, idx) => (
+                  <figure key={photo.id} className="border border-slate-300 rounded p-2 bg-white">
+                    <img
+                      src={photo.dataUrl}
+                      alt={photo.caption || `Photograph ${idx + 1}`}
+                      className="w-full h-48 object-contain bg-slate-50"
+                    />
+                    <figcaption className="text-center text-[10px] text-slate-600 mt-1">
+                      {photo.caption?.trim() || `Photograph ${idx + 1}`}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer (Hidden on print) */}
         <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 rounded-b-2xl print:hidden">
-          <span>Total: {totalSpecs} Criteria across {content.sections.length} Sections</span>
+          <span>
+            Total: {totalSpecs} Criteria across {content.sections.length} Sections
+          </span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100"

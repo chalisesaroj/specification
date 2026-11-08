@@ -56,6 +56,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specifications of Four-Wheel Drive Double Cab Pickup Vehicle',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Four-Wheel Drive Double Cab Pickup Vehicle',
       fiscalYear: '2083/84',
       vehicleCategory: '4WD Double Cab Pickup',
       vehicleDescription: '4WD Double Cab Pickup, Right Hand Drive model with high ground clearance (2025 or later manufacture)',
@@ -101,6 +104,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specifications of Car',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Car',
       fiscalYear: '2083/84',
       vehicleCategory: 'Car (Sedan / Hatchback)',
       vehicleDescription: 'Four door, Right Hand Drive Gasoline Passenger Car (seating capacity min 5 persons)',
@@ -147,6 +153,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specifications of Two-Wheel Drive Hardtop Jeep',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Two-Wheel Drive Hardtop Jeep',
       fiscalYear: '2083/84',
       vehicleCategory: 'Jeep (2WD Hardtop)',
       vehicleDescription: 'Five door, Right Hand Drive, Two Wheel drive jeep (GVW min 2500 kg, min 7 persons)',
@@ -192,6 +201,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specifications of Four Wheel Drive Vehicle',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Four Wheel Drive Vehicle',
       fiscalYear: '2083/84',
       vehicleCategory: 'Four Wheel Drive Vehicle',
       vehicleDescription: '5-Door Hardtop 4WD Turbo Diesel Station Wagon (Right Hand Drive)',
@@ -228,6 +240,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specifications of School Bus',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of School Bus',
       fiscalYear: '2083/84',
       vehicleCategory: 'School Bus',
       vehicleDescription: 'Right hand drive school passenger bus (GVW min 7000 kg, wheelbase min 4100 mm, min 36 seats)',
@@ -270,6 +285,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specifications of Backhoe Loader',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Backhoe Loader',
       fiscalYear: '2083/84',
       vehicleCategory: 'Backhoe Loader',
       vehicleDescription: 'All wheel drive, rigid frame backhoe loader with steel cab (manufacture year 2024 or later)',
@@ -314,6 +332,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specification of Hydraulic Excavator',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Hydraulic Excavator',
       fiscalYear: '2083/84',
       vehicleCategory: 'Hydraulic Excavator',
       vehicleDescription: 'Crawler mounted hydraulic excavator, 1 cu.m bucket, operating weight at least 20,000 kg',
@@ -354,6 +375,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specification of Motorcycle',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Motorcycle',
       fiscalYear: '2083/84',
       vehicleCategory: 'Motorcycle',
       vehicleDescription: 'Motorcycle of sturdy design, suitable for official field use (manufacture year 2025 or later)',
@@ -387,6 +411,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specification of Scooter',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Scooter',
       fiscalYear: '2083/84',
       vehicleCategory: 'Scooter',
       vehicleDescription: 'Scooter of sturdy design for municipal administrative mobility (manufacture year 2025 or later)',
@@ -419,6 +446,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specification of Combined Mill',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Combined Mill',
       fiscalYear: '2083/84',
       vehicleCategory: 'Combine Mill',
       vehicleDescription: 'Electric driven combine mill for small-scale household and cooperative grain processing',
@@ -450,6 +480,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specification of Mini Tiller',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Mini Tiller',
       fiscalYear: '2083/84',
       vehicleCategory: 'Mini Tiller',
       vehicleDescription: '4-stroke powered agricultural mini tiller for slope and plain cultivation',
@@ -483,6 +516,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specifications of 10-12 Ton Tipper Truck',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of 10-12 Ton Tipper Truck',
       fiscalYear: '2083/84',
       vehicleCategory: 'Truck',
       vehicleDescription: '4x2 / 6x4 Heavy Duty Tipper Truck with 8.5 to 10 Cu.M Box Body',
@@ -515,6 +551,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specifications of 45-50 HP 4WD Utility Tractor',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of 45-50 HP 4WD Utility Tractor',
       fiscalYear: '2083/84',
       vehicleCategory: 'Tractor',
       vehicleDescription: '45 to 50 HP Four-Wheel Drive Agricultural Utility Tractor with 3-Point Hitch & PTO',
@@ -546,6 +585,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specifications of Type B Emergency Life Support Ambulance',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Type B Emergency Life Support Ambulance',
       fiscalYear: '2083/84',
       vehicleCategory: 'Ambulance',
       vehicleDescription: 'High-Roof 4WD/RWD Medical Transport Ambulance with Patient Compartment',
@@ -579,6 +621,9 @@ export const DEFAULT_STANDARDS: StandardSpecification[] = [
     content: {
       documentTitle: 'Technical Specifications of Sport Utility Vehicle (SUV)',
       organizationName: 'Pokhara Metropolitan City',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of Sport Utility Vehicle (SUV)',
       fiscalYear: '2083/84',
       vehicleCategory: 'SUV',
       vehicleDescription: 'Executive 5/7 Seater Premium Sport Utility Vehicle (SUV) Automatic/Manual',

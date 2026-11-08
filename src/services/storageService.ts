@@ -21,6 +21,21 @@ function filterOutDeleted(records: WorkRecord[]): WorkRecord[] {
   }
 }
 
+/**
+ * Writes to localStorage without breaking the save flow when the browser quota
+ * is exceeded (for example when inspection photographs are attached). The
+ * Supabase copy is still written afterwards.
+ */
+function safeSetItem(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (err) {
+    console.warn(`Could not cache "${key}" in localStorage (quota may be full).`, err);
+    return false;
+  }
+}
+
 export interface SaveWorkRecordResult {
   record: WorkRecord;
   syncedToSupabase: boolean;
@@ -47,6 +62,9 @@ const INITIAL_DEMO_WORK_RECORDS: WorkRecord[] = [
     content: {
       documentTitle: 'Technical Specifications of Four-Wheel Drive Double Cab Pickup Vehicle',
       organizationName: 'Pokhara Metropolitan City, Office of Municipal Executive',
+      subDivision: 'Infrastructure Development & Procurement Division',
+      officeLocation: 'Pokhara, Kaski, Gandaki Province',
+      projectName: 'Procurement of 4WD Double Cab Pickup',
       fiscalYear: '2083/84',
       tenderNo: 'PMC/GOODS/NCB-04/2083-84',
       vehicleCategory: '4WD Double Cab Pickup',
@@ -76,7 +94,10 @@ const INITIAL_DEMO_WORK_RECORDS: WorkRecord[] = [
     updated_at: '2026-09-02T14:40:00Z',
     content: {
       documentTitle: 'Technical Specification of 4WD Field Vehicle',
-      organizationName: 'Putalibazar Municipality, Engineering Department',
+      organizationName: 'Putalibazar Municipality',
+      subDivision: 'Engineering Department',
+      officeLocation: 'Putalibazar, Syangja, Gandaki Province',
+      projectName: 'Procurement of 4WD Field Vehicle',
       fiscalYear: '2083/84',
       tenderNo: 'MUNA/NCB/GOODS/02/2083-84',
       vehicleCategory: 'Four Wheel Drive Vehicle',
@@ -102,7 +123,10 @@ const INITIAL_DEMO_WORK_RECORDS: WorkRecord[] = [
     updated_at: '2026-10-18T16:30:00Z',
     content: {
       documentTitle: 'Technical Specification of Four Wheel Drive Double Cab Pickup',
-      organizationName: 'Bhirkot Municipality, Infrastructure Development Division',
+      organizationName: 'Bhirkot Municipality',
+      subDivision: 'Infrastructure Development Division',
+      officeLocation: 'Bhirkot, Syangja, Gandaki Province',
+      projectName: 'Procurement of 4WD Double Cab Pickup',
       fiscalYear: '2084/85',
       tenderNo: 'BHIR/GOODS/2084-85/01',
       vehicleCategory: '4WD Double Cab Pickup',
@@ -271,7 +295,7 @@ export const storageService = {
           });
 
           const validRecords = filterOutDeleted(records);
-          localStorage.setItem(LS_KEY_WORK_RECORDS, JSON.stringify(validRecords));
+          safeSetItem(LS_KEY_WORK_RECORDS, JSON.stringify(validRecords));
           return validRecords;
         } else if (!error && data && data.length === 0) {
           // If empty in Supabase, only seed if user has NEVER initialized or deleted
@@ -297,7 +321,7 @@ export const storageService = {
             return filterOutDeleted(INITIAL_DEMO_WORK_RECORDS);
           }
           // User intentionally emptied or deleted records
-          localStorage.setItem(LS_KEY_WORK_RECORDS, JSON.stringify([]));
+          safeSetItem(LS_KEY_WORK_RECORDS, JSON.stringify([]));
           return [];
         }
       } catch (err) {
@@ -318,7 +342,7 @@ export const storageService = {
     const hasInitialized = localStorage.getItem('autospec_records_initialized');
     if (!hasInitialized) {
       localStorage.setItem('autospec_records_initialized', 'true');
-      localStorage.setItem(LS_KEY_WORK_RECORDS, JSON.stringify(INITIAL_DEMO_WORK_RECORDS));
+      safeSetItem(LS_KEY_WORK_RECORDS, JSON.stringify(INITIAL_DEMO_WORK_RECORDS));
       return filterOutDeleted(INITIAL_DEMO_WORK_RECORDS);
     }
     return [];
@@ -364,7 +388,7 @@ export const storageService = {
       }
     } catch {}
 
-    localStorage.setItem(LS_KEY_WORK_RECORDS, JSON.stringify(records));
+    safeSetItem(LS_KEY_WORK_RECORDS, JSON.stringify(records));
 
     // Save directly to Supabase as BaaS
     const supabase = getSupabase();
@@ -549,7 +573,7 @@ export const storageService = {
       if (targetRecord?.document_name && r.document_name === targetRecord.document_name) return false;
       return true;
     });
-    localStorage.setItem(LS_KEY_WORK_RECORDS, JSON.stringify(filtered));
+    safeSetItem(LS_KEY_WORK_RECORDS, JSON.stringify(filtered));
 
     const supabase = getSupabase();
     let deletedFromSupabase = false;
@@ -680,7 +704,7 @@ export const storageService = {
   // Reset to default seed data
   async resetToDefaults(): Promise<void> {
     localStorage.setItem(LS_KEY_STANDARDS, JSON.stringify(DEFAULT_STANDARDS));
-    localStorage.setItem(LS_KEY_WORK_RECORDS, JSON.stringify(INITIAL_DEMO_WORK_RECORDS));
+    safeSetItem(LS_KEY_WORK_RECORDS, JSON.stringify(INITIAL_DEMO_WORK_RECORDS));
   },
 
   // Full export JSON
@@ -702,7 +726,7 @@ export const storageService = {
       localStorage.setItem(LS_KEY_STANDARDS, JSON.stringify(parsed.standards));
     }
     if (Array.isArray(parsed.workRecords)) {
-      localStorage.setItem(LS_KEY_WORK_RECORDS, JSON.stringify(parsed.workRecords));
+      safeSetItem(LS_KEY_WORK_RECORDS, JSON.stringify(parsed.workRecords));
     }
     return {
       standardsCount: parsed.standards?.length || 0,

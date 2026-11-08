@@ -13,6 +13,36 @@ export interface CustomHeaderRow {
   value: string;
 }
 
+/** A free-form key/value line shown inside "General Details of Inspection". */
+export interface CustomDetailRow {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface FunctionalTestRow {
+  id: string;
+  test: string;
+  result?: 'Passed' | 'Failed' | 'Not Applicable' | 'Pending';
+  remarks?: string;
+}
+
+export interface InspectionPhoto {
+  id: string;
+  /** Compressed data URL (image/jpeg) ready for preview and PDF embedding. */
+  dataUrl: string;
+  caption?: string;
+  width?: number;
+  height?: number;
+}
+
+export type InspectionConclusion =
+  | 'Accepted'
+  | 'Not Accepted'
+  | 'Accepted with Conditions'
+  // Legacy value kept for older saved records.
+  | 'Rejected';
+
 export interface InspectionDetails {
   chassisNo?: string;
   engineNo?: string;
@@ -22,10 +52,18 @@ export interface InspectionDetails {
   batteryDetails?: string;
   tyreDetails?: string;
   deliveryDate?: string;
+  dateOfInspection?: string;
+  make?: string;
+  model?: string;
+  countryOfOrigin?: string;
   inspectorName?: string;
   inspectorDesignation?: string;
   selectedBidderName?: string;
-  overallConclusion?: 'Accepted' | 'Accepted with Conditions' | 'Rejected';
+  overallConclusion?: InspectionConclusion;
+  conclusionText?: string;
+  customDetailRows?: CustomDetailRow[];
+  functionalTests?: FunctionalTestRow[];
+  photos?: InspectionPhoto[];
 }
 
 export interface SpecRow {
@@ -64,6 +102,9 @@ export interface CostEstimateData {
   id?: string;
   documentTitle: string;
   organizationName: string;
+  subDivision?: string;
+  officeLocation?: string;
+  projectName?: string;
   headerLines?: string[];
   fiscalYear: string;
   vehicleCategory: string;
@@ -85,6 +126,12 @@ export interface CostEstimateData {
 export interface SpecContent {
   documentTitle: string;
   organizationName: string;
+  /** Second header line, e.g. "Infrastructure Development & Procurement Division". */
+  subDivision?: string;
+  /** Third header line, e.g. "Pokhara, Kaski, Gandaki Province". */
+  officeLocation?: string;
+  /** Header line shown as "Project Name: ...". */
+  projectName?: string;
   fiscalYear: string;
   tenderNo?: string;
   bidderName?: string;
