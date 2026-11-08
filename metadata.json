@@ -1,0 +1,6 @@
+{
+  "name": "AutoSpec Pro - Automobile Technical Specification Generator",
+  "description": "Professional engineering standard specifications and work record history management for automobile technical specifications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

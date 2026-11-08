@@ -1,0 +1,2014 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>प्राविधिक कागजात स्वचालित निर्माण प्रणाली</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Serif+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:'Noto Sans Devanagari',system-ui,-apple-system,sans-serif;background:#eef1f5;color:#14202b;font-size:14px}
+.appbar{position:sticky;top:0;z-index:50;background:#0b4a34;color:#fff;padding:8px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.appbar h1{font-size:15px;margin:0;font-weight:600}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+.tabs button{background:rgba(255,255,255,.14);color:#fff;border:0;padding:6px 11px;border-radius:6px;font:inherit;font-size:13px;cursor:pointer}
+.tabs button.on{background:#fff;color:#0b4a34;font-weight:600}
+.module{display:none}
+.module.active{display:block}
+.layout{display:grid;grid-template-columns:440px 1fr;gap:14px;padding:14px;align-items:start}
+@media(max-width:1050px){.layout{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid #d5dde5;border-radius:10px;padding:12px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:14px;color:#0b4a34}
+label{display:block;font-size:12px;font-weight:600;color:#3a4a58;margin:6px 0 3px}
+input,select,textarea{width:100%;padding:6px 8px;border:1px solid #c5cfda;border-radius:6px;font:inherit;font-size:13px;background:#fff;color:#14202b}
+textarea{resize:vertical}
+.btn{background:#0b4a34;color:#fff;border:0;padding:8px 14px;border-radius:7px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.btn.alt{background:#e8edf2;color:#22303c}
+.btn.sm{padding:5px 10px;font-size:12px}
+.mini{padding:2px 7px;font-size:12px;border-radius:5px;border:1px solid #c5cfda;background:#fff;cursor:pointer}
+.mini.danger{color:#a5281f;border-color:#e3b4b0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+table.grid{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+table.grid th{background:#eef3f7;border:1px solid #cfd8e1;padding:4px 5px;text-align:left;font-size:11.5px}
+table.grid td{border:1px solid #cfd8e1;padding:3px 4px;vertical-align:top}
+table.grid input,table.grid textarea,table.grid select{font-size:12px;padding:3px 5px;border-radius:4px}
+.preview{background:#fff;border:1px solid #d5dde5;border-radius:8px;padding:18px 20px;min-height:500px;overflow:auto}
+.hint{font-size:11.5px;color:#657687;margin-top:4px;line-height:1.4}
+.thumb{width:120px;border:1px solid #cfd8e1;border-radius:6px;padding:4px;background:#fff;display:inline-block;margin:4px;vertical-align:top}
+.thumb img{width:100%;display:block;border-radius:4px}
+.flexrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.subtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.subtabs button{background:#e8edf2;border:0;padding:6px 12px;border-radius:20px;font:inherit;font-size:12.5px;cursor:pointer;color:#22303c}
+.subtabs button.on{background:#0b4a34;color:#fff;font-weight:600}
+/* ---------- document styles ---------- */
+.doc{font-family:'Noto Serif Devanagari',serif;color:#000;font-size:12pt;line-height:1.5}
+.doc table{border-collapse:collapse;width:100%}
+.doc table.spec th,.doc table.spec td{border:1px solid #000;padding:4px 6px;vertical-align:top;font-size:10pt}
+.doc table.spec th{background:#f0f0f0;text-align:center;font-weight:700}
+.doc table.plain td{border:0;padding:2px 0;font-size:11pt;vertical-align:top}
+.doc h2{font-size:13pt;text-align:center;margin:8px 0 10px;font-weight:700}
+.doc h3{font-size:11.5pt;margin:10px 0 6px;font-weight:700}
+.doc .lh{margin-bottom:8px}
+.doc .lh .line{border-bottom:2px solid #000;margin-top:4px}
+.doc .sign{margin-top:30px;display:flex;justify-content:space-between;gap:20px}
+.doc .sign div{text-align:center;font-size:10.5pt;line-height:1.6}
+.doc .ftr{margin-top:26px;border-top:1px solid #888;padding-top:4px;font-size:9pt;color:#333;text-align:center}
+.doc .center{text-align:center}
+.doc .small{font-size:10pt}
+.doc table.box th,.doc table.box td{border:1px solid #000;padding:4px 5px;font-size:10pt;vertical-align:top}
+.doc table.box th{background:#f0f0f0;text-align:center}
+.doc ul{margin:4px 0 0 18px;padding:0}
+.doc ul li{font-size:10pt;margin-bottom:3px}
+.photo-grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.photo-grid figure{width:46%;margin:0;border:1px solid #999;padding:4px}
+.photo-grid img{width:100%;display:block}
+.photo-grid figcaption{font-size:9pt;text-align:center;margin-top:3px}
+.office-title{text-align:center;margin:6px 0 12px}
+.office-title .parent{font-size:12pt;font-weight:600}
+.office-title .child{font-size:16pt;font-weight:700}
+.office-title .loc{font-size:11pt}
+/* ---------- modal ---------- */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:200;padding:18px;overflow:auto}
+.modal-overlay.on{display:block}
+.modal{background:#fff;max-width:720px;margin:30px auto;border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.modal h3{margin:0 0 10px}
+.param-row{display:grid;grid-template-columns:1.6fr 1.3fr 1fr 0.7fr 32px;gap:6px;margin-bottom:6px;align-items:center}
+/* ---------- Nepali date picker ---------- */
+.np-picker-popup{position:fixed;background:#fff;border:1px solid #b7c3cf;border-radius:9px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:1500;width:280px}
+.np-picker-header{display:flex;align-items:center;gap:4px;margin-bottom:6px}
+.np-picker-header select{padding:3px 4px;font-size:12px}
+.np-picker-header button{background:#e8edf2;border:1px solid #c5cfda;border-radius:5px;padding:3px 7px;cursor:pointer;font-weight:600}
+.np-picker-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.np-picker-day{text-align:center;padding:5px 0;border-radius:5px;cursor:pointer;font-size:12.5px}
+.np-picker-day:hover{background:#e8f3ec}
+.np-picker-day.today{background:#cce5d5;font-weight:700}
+.np-picker-day.head{color:#0b4a34;font-weight:700;cursor:default;font-size:11px}
+.np-picker-day.head:hover{background:transparent}
+@media print{
+  body{background:#fff}
+  .no-print,.appbar,.modal-overlay{display:none!important}
+  .module{display:none!important}
+  .module.active{display:block!important}
+  .layout{display:block!important;padding:0!important;gap:0!important}
+  .preview{border:0!important;padding:0!important;min-height:0!important;overflow:visible!important;border-radius:0!important}
+  .preview.hidden{display:none!important}
+  .doc{font-size:11pt}
+  .doc table.spec th,.doc table.spec td{font-size:9.5pt}
+  .doc .sign{margin-top:22px}
+  .page-break{page-break-after:always}
+}
+</style>
+<style id="pageStyle">@page{size:A4 portrait;margin:12mm}</style>
+</head>
+<body>
+
+<div class="appbar no-print">
+  <h1>⚙️ प्राविधिक कागजात स्वचालित निर्माण प्रणाली</h1>
+  <div class="tabs">
+    <button data-tab="settings" class="on" onclick="showTab('settings')">सेटिङ</button>
+    <button data-tab="spec" onclick="showTab('spec')">स्पेसिफिकेसन</button>
+    <button data-tab="insp" onclick="showTab('insp')">इन्स्पेक्सन रिपोर्ट</button>
+    <button data-tab="est" onclick="showTab('est')">मर्मत अनुमान</button>
+    <button data-tab="letter" onclick="showTab('letter')">पत्र</button>
+    <button data-tab="to" onclick="showTab('to')">भ्रमण आदेश / बिल</button>
+  </div>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<section id="mod-settings" class="module active">
+  <div class="layout">
+    <div class="no-print">
+      <div class="card">
+        <h3>लेटरहेड (नेपाली) — आफ्नो कार्यालय</h3>
+        <label>पहिलो लाइन</label><input id="s_org1">
+        <label>दोस्रो लाइन</label><input id="s_org2">
+        <label>तेस्रो लाइन</label><input id="s_org3">
+        <label>चौथो लाइन (शिक्षालय)</label><input id="s_org4">
+        <label>पाँचौं लाइन</label><input id="s_org5">
+      </div>
+      <div class="card">
+        <h3>लेटरहेड (English)</h3>
+        <label>Line 1</label><input id="s_eng1">
+        <label>Line 2</label><input id="s_eng2">
+        <label>Line 3</label><input id="s_eng3">
+        <label>Line 4</label><input id="s_eng4">
+      </div>
+      <div class="card">
+        <h3>गन्तव्य कार्यालय (Specification / पत्र / भ्रमण)</h3>
+        <div class="hint">तलको सूचीबाट कार्यालय छान्नुहोस् — नाम र ठेगाना स्वतः भरिनेछ। आवश्यक परे तलका बक्सहरूमा म्यानुअल रूपमा पनि सम्पादन गर्न सकिन्छ।</div>
+        <label>🔍 कार्यालय खोज्नुहोस् (फिल्टर)</label>
+        <input id="s_tgtFilter" placeholder="जस्तै: पोखरा, पुतली, भीरकोट..." oninput="officeFilterChange()">
+        <label>कार्यालय छान्नुहोस्</label>
+        <select id="s_tgtSelect" onchange="onTargetOfficeSelect()"></select>
+        <label>कार्यालयको नाम (नेपाली)</label><input id="s_tgtNameNe">
+        <label>ठेगाना (नेपाली)</label><input id="s_tgtAddrNe">
+        <label>Office Name (English)</label><input id="s_tgtNameEn">
+        <label>Address (English)</label><input id="s_tgtAddrEn">
+        <button class="btn alt sm" style="margin-top:8px" onclick="clearTargetOffice()">🗑 गन्तव्य खाली गर्नुहोस्</button>
+      </div>
+      <div class="card">
+        <h3>सम्पर्क तथा फुटर</h3>
+        <div class="row3">
+          <div><label>वेबसाइट</label><input id="s_website"></div>
+          <div><label>इमेल</label><input id="s_email"></div>
+          <div><label>फोन</label><input id="s_phone"></div>
+        </div>
+        <label>फुटर (खाली छोड्नुभए कुनै फुटर देखिने छैन)</label><input id="s_footer">
+      </div>
+      <div class="card">
+        <h3>लोगो</h3>
+        <div class="row">
+          <div><label>बायाँ लोगो</label><input type="file" id="s_logoLeft" accept="image/*"></div>
+          <div><label>दायाँ लोगो</label><input type="file" id="s_logoRight" accept="image/*"></div>
+        </div>
+        <div id="logoPreview" style="margin-top:8px"></div>
+        <button class="mini danger" onclick="clearLogo('left')">बायाँ हटाउने</button>
+        <button class="mini danger" onclick="clearLogo('right')">दायाँ हटाउने</button>
+      </div>
+      <div class="card">
+        <h3>हस्ताक्षरकर्ता / बैंक</h3>
+        <label>तयार गर्नेको नाम</label><input id="s_prepName">
+        <label>पद</label><input id="s_prepDesig">
+        <label>NEC / दर्ता विवरण</label><input id="s_nec">
+        <label>स्वीकृत गर्नेको नाम</label><input id="s_appName">
+        <div class="row3">
+          <div><label>A/C Holder</label><input id="s_bankHolder"></div>
+          <div><label>Account No.</label><input id="s_bankAcc"></div>
+          <div><label>Bank</label><input id="s_bankName"></div>
+        </div>
+        <label>Branch</label><input id="s_bankBranch">
+      </div>
+      <button class="btn" onclick="saveSettingsForm()">💾 सेभ गर्नुहोस्</button>
+      <span id="saveMsg" style="color:#0b4a34;font-weight:600;margin-left:8px"></span>
+    </div>
+    <div>
+      <div class="card">
+        <h3>निर्देशन</h3>
+        <div class="hint">
+          १. कार्यालयको नाम, लोगो, सम्पर्क र हस्ताक्षरकर्ता भर्नुहोस्।<br>
+          २. <b>गन्तव्य कार्यालय</b> सूचीबाट छान्नुहोस् — नाम, ठेगाना (नेपाली र English दुवै) स्वतः भरिन्छ। आवश्यक परे म्यानुअल सम्पादन गर्न सकिन्छ।<br>
+          ३. फुटर खाली राख्नुभए कुनै फुटर देखिने छैन।<br>
+          ४. मिति भर्न क्लिक गर्नुहोस् — नेपाली पात्रो खुल्नेछ।
+        </div>
+      </div>
+      <div class="card"><h3>पूर्वावलोकन (लेटरहेड)</h3><div class="preview" id="settingsPreview"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SPECIFICATION ============ -->
+<section id="mod-spec" class="module">
+  <div class="layout">
+    <div class="no-print">
+      <div class="card">
+        <h3>१. किसिम तथा विवरण</h3>
+        <label>सवारी / मेसिनको प्रकार</label>
+        <select id="specType" onchange="onSpecTypeChange()"></select>
+        <button class="btn sm" style="margin-top:8px" onclick="loadSpecTemplate()">🔄 टेम्प्लेट लोड गर्नुहोस्</button>
+        <label>कागजातको शीर्षक</label><input id="specTitle" oninput="specPreviewRender()">
+        <div class="row3" style="margin-top:6px">
+          <div><label>Make</label><input id="specMake" oninput="specPreviewRender()"></div>
+          <div><label>Model</label><input id="specModel" oninput="specPreviewRender()"></div>
+          <div><label>Country of Origin</label><input id="specCountry" oninput="specPreviewRender()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>२. प्राविधिक स्पेसिफिकेसन</h3>
+        <div class="hint">प्रत्येक पङ्क्तिको <b>🔧</b> बटनले मापदण्ड बनाउन मिल्ने विन्डो खोल्छ।</div>
+        <button class="btn alt sm" style="margin-top:6px" onclick="addSpecColumn()">+ नयाँ स्तम्भ</button>
+        <div style="overflow-x:auto;margin-top:8px">
+          <table class="grid" id="specRowsTable"></table>
+        </div>
+        <button class="btn alt sm" style="margin-top:8px" onclick="addSpecRow()">+ नयाँ पङ्क्ति</button>
+        <textarea id="specPaste" rows="3" placeholder="Criteria&#9;Requirement"></textarea>
+        <div class="flexrow" style="margin-top:6px">
+          <button class="btn alt sm" onclick="parseSpecPaste()">📋 पार्स गर्नुहोस्</button>
+          <button class="btn alt sm" onclick="clearSpecPaste()">🗑 खाली गर्नुहोस्</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>३. लागत अनुमान</h3>
+        <div class="row3">
+          <div><label>परिमाण</label><input id="specQty" type="number" value="1" oninput="specPreviewRender()"></div>
+          <div><label>एकाइ</label><input id="specUnit" value="Nos." oninput="specPreviewRender()"></div>
+          <div><label>दर (रु.)</label><input id="specRate" type="number" value="0" oninput="specPreviewRender()"></div>
+        </div>
+        <label style="margin-top:8px"><input type="checkbox" id="specVatOn" onchange="specPreviewRender()" style="width:auto"> VAT लागू</label>
+        <div class="row">
+          <div><label>VAT दर (%)</label><input id="specVatRate" type="number" value="13" oninput="specPreviewRender()"></div>
+          <div><label>Remarks</label><input id="specRemarks" value="As per the market survey and website research of authorized dealers of Nepal" oninput="specPreviewRender()"></div>
+        </div>
+        <label>Delivery (कहाँ पुर्‍याउने)</label><input id="specDelivery" oninput="specPreviewRender()">
+      </div>
+
+      <div class="card">
+        <h3>हेडर व्यवस्थापन</h3>
+        <label>हेडर</label>
+        <select id="specHeaderMode" onchange="specPreviewRender()">
+          <option value="own">आफ्नो कार्यालयको लेटरहेड</option>
+          <option value="target">गन्तव्य कार्यालय (सेटिङमा भरिएको)</option>
+          <option value="none">कुनै हेडर नदेखाउने</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <div class="subtabs" id="specTabs">
+          <button data-v="spec" class="on" onclick="specShow('spec')">स्पेसिफिकेसन</button>
+          <button data-v="est" onclick="specShow('est')">लागत अनुमान</button>
+        </div>
+        <button class="btn" onclick="specPreviewRender()">👁 पूर्वावलोकन</button>
+        <button class="btn alt" onclick="printDoc(false)">🖨 Print / PDF</button>
+      </div>
+    </div>
+    <div>
+      <div class="preview" id="specPreview"></div>
+      <div class="preview hidden" id="specEstPreview"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INSPECTION ============ -->
+<section id="mod-insp" class="module">
+  <div class="layout">
+    <div class="no-print">
+      <div class="card">
+        <h3>१. कागजातको शीर्षक</h3>
+        <label>Title</label><input id="i_title" value="Inspection Report of Vehicle" oninput="inspPreview()">
+        <label>माथिको उप-शीर्षक</label><input id="i_subtitle" placeholder="Urban Resilience and Livability Improvement Project ..." oninput="inspPreview()">
+      </div>
+
+      <div class="card">
+        <h3>हेडर व्यवस्थापन</h3>
+        <label>हेडर</label>
+        <select id="i_headerMode" onchange="inspPreview()">
+          <option value="own">आफ्नो कार्यालयको लेटरहेड</option>
+          <option value="target">गन्तव्य कार्यालय (सेटिङमा भरिएको)</option>
+          <option value="none">कुनै हेडर नदेखाउने</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <h3>२. सवारी / मेसिनको विवरण</h3>
+        <table class="grid" id="i_details"></table>
+        <button class="btn alt sm" style="margin-top:6px" onclick="inspAddDetail()">+ थप्नुहोस्</button>
+      </div>
+
+      <div class="card">
+        <h3>३. स्पेसिफिकेसन अनुरूपता</h3>
+        <div class="hint">Word बाट स्वीकृत स्पेसिफिकेसनको टेबल (S.N | Criteria | Requirement) कपि गरी पेस्ट गर्नुहोस्।</div>
+        <textarea id="i_paste" rows="5" placeholder="1&#9;General&#9;Four door, Right Hand Drive ..."></textarea>
+        <div class="flexrow" style="margin-top:6px">
+          <button class="btn sm" onclick="inspParse()">📋 पार्स गर्नुहोस्</button>
+          <button class="btn alt sm" onclick="inspClearSpec()">🗑 खाली गर्नुहोस्</button>
+        </div>
+        <div style="max-height:420px;overflow:auto;margin-top:8px">
+          <table class="grid" id="i_spec"></table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>४. कार्यक्षमता जाँच</h3>
+        <table class="grid" id="i_func"></table>
+        <button class="btn alt sm" style="margin-top:6px" onclick="inspAddFunc()">+ थप्नुहोस्</button>
+      </div>
+
+      <div class="card">
+        <h3>५. फोटोग्राफ</h3>
+        <input type="file" id="i_photos" accept="image/*" multiple onchange="inspAddPhotos(event)">
+        <div id="i_photoList" style="margin-top:6px"></div>
+      </div>
+
+      <div class="card">
+        <h3>६. निष्कर्ष तथा हस्ताक्षर</h3>
+        <label>निष्कर्ष</label>
+        <textarea id="i_conclusion" rows="3" oninput="inspPreview()">Upon inspection it was found that the supplied vehicle complies fully as per the approved specification of the office. Hence it is recommended for further proceedings.</textarea>
+        <div class="row">
+          <div><label>Prepared by (नाम)</label><input id="i_prep" oninput="inspPreview()"></div>
+          <div><label>Approved by (नाम)</label><input id="i_app" oninput="inspPreview()"></div>
+        </div>
+        <label>जाँच मिति</label><input id="i_date" oninput="inspPreview()">
+      </div>
+
+      <div class="card">
+        <button class="btn" onclick="inspPreview()">👁 पूर्वावलोकन</button>
+        <button class="btn alt" onclick="printDoc(false)">🖨 Print / PDF</button>
+      </div>
+    </div>
+    <div><div class="preview" id="i_preview"></div></div>
+  </div>
+</section>
+
+<!-- ============ ESTIMATE ============ -->
+<section id="mod-est" class="module">
+  <div class="layout">
+    <div class="no-print">
+      <div class="card">
+        <h3>१. कार्यालय तथा सवारी विवरण</h3>
+        <label>Parent Office (ठूलो कार्यालय — ऐच्छिक)</label><input id="e_parentOffice" placeholder="जस्तै: पोखरा महानगरपालिका" oninput="estPreview()">
+        <label>कार्यालयको नाम (मुख्य)</label><input id="e_office" oninput="estPreview()">
+        <label>कार्यालयको स्थान</label><input id="e_location" oninput="estPreview()">
+        <div class="row3" style="margin-top:6px">
+          <div>
+            <label>सवारीको किसिम</label>
+            <select id="e_vehType" onchange="estPreview()">
+              <option value="">-- छान्नुहोस् --</option>
+              <option>Car</option><option>Jeep</option><option>Bus</option><option>Truck</option>
+              <option>Pickup</option><option>Van</option><option>Motorcycle</option><option>Scooter</option>
+              <option>Tractor</option><option>Excavator</option><option>Backhoe Loader</option>
+              <option>Mini Tiller</option><option>Combine Mill</option>
+            </select>
+          </div>
+          <div>
+            <label>Make / Model</label>
+            <input id="e_vehMake" list="vehMakeList" placeholder="Mahindra Scorpio" oninput="estPreview()">
+            <datalist id="vehMakeList">
+              <option>Mahindra Scorpio</option><option>Mahindra Bolero</option><option>Mahindra Thar</option>
+              <option>Tata Sumo Gold</option><option>Tata Ace</option><option>Tata Marcopolo</option>
+              <option>Tata 407</option><option>Tata Yodha</option><option>Toyota Hilux</option>
+              <option>Toyota Land Cruiser</option><option>Toyota Fortuner</option>
+              <option>Hyundai Creta</option><option>Hyundai i20</option><option>Hyundai Venue</option>
+              <option>Suzuki Swift</option><option>Suzuki Dzire</option><option>Suzuki Ertiga</option>
+              <option>Suzuki Jimny</option><option>Honda City</option><option>Honda Activa</option>
+              <option>Bajaj Pulsar</option><option>TVS Apache</option><option>Hero Splendor</option>
+              <option>Royal Enfield Classic</option><option>JCB 3DX</option><option>Bull HD 96</option>
+              <option>Hitachi Zaxis</option><option>Komatsu PC200</option>
+              <option>Ashok Leyland</option><option>Eicher</option>
+            </datalist>
+          </div>
+          <div>
+            <label>उत्पादन वर्ष</label>
+            <select id="e_vehYear" onchange="estPreview()">
+              <option value="">-- छान्नुहोस् --</option>
+              <option>2018</option><option>2019</option><option>2020</option>
+              <option>2021</option><option>2022</option><option>2023</option>
+              <option>2024</option><option>2025</option><option>2026</option><option>2027</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>२. कागजातको विवरण</h3>
+        <label>शीर्षक</label><input id="e_title" value="Maintenance Estimate" oninput="estPreview()">
+        <div class="row">
+          <div><label>अनुमान नं.</label><input id="e_no" oninput="estPreview()"></div>
+          <div><label>मिति</label><input id="e_date" oninput="estPreview()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>हेडर व्यवस्थापन</h3>
+        <label>हेडर</label>
+        <select id="e_headerMode" onchange="estPreview()">
+          <option value="own">आफ्नो कार्यालयको लेटरहेड</option>
+          <option value="target">गन्तव्य कार्यालय (सेटिङमा भरिएको)</option>
+          <option value="none">कुनै हेडर नदेखाउने</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <h3>३. मर्मत सामग्री / कार्य</h3>
+        <div class="hint">Excel बाट टेबल कपि गरी पेस्ट गर्नुहोस्। ढाँचा: <b>क्र.सं | विवरण | एकाइ | परिमाण | दर | रकम</b>।</div>
+        <textarea id="e_paste" rows="6" placeholder="1&#9;Engine Oil&#9;Ltr&#9;10&#9;950.00&#9;9,500.00"></textarea>
+        <div class="flexrow" style="margin-top:6px">
+          <button class="btn sm" onclick="estParse()">📋 पार्स गर्नुहोस्</button>
+          <button class="btn alt sm" onclick="estClearRows()">🗑 खाली गर्नुहोस्</button>
+        </div>
+        <table class="grid" id="e_rows" style="margin-top:8px"></table>
+        <button class="btn alt sm" style="margin-top:6px" onclick="estAddRow()">+ नयाँ पङ्क्ति</button>
+      </div>
+
+      <div class="card">
+        <h3>४. जोड तथा कर</h3>
+        <div class="row3">
+          <div><label>Contingency (%)</label><input id="e_cont" type="number" value="0" oninput="estPreview()"></div>
+          <div><label>VAT (%)</label><input id="e_vat" type="number" value="13" oninput="estPreview()"></div>
+          <div><label>VAT लागू</label><select id="e_vatOn" onchange="estPreview()"><option value="yes">हो</option><option value="no">होइन</option></select></div>
+        </div>
+        <label>Remarks</label><input id="e_remarks" value="As per the market survey and website research of authorized dealers of Nepal" oninput="estPreview()">
+      </div>
+
+      <div class="card">
+        <button class="btn" onclick="estPreview()">👁 पूर्वावलोकन</button>
+        <button class="btn alt" onclick="printDoc(false)">🖨 Print / PDF</button>
+      </div>
+    </div>
+    <div><div class="preview" id="e_preview"></div></div>
+  </div>
+</section>
+
+<!-- ============ LETTER ============ -->
+<section id="mod-letter" class="module">
+  <div class="layout">
+    <div class="no-print">
+      <div class="card">
+        <h3>१. पत्रको विवरण</h3>
+        <label>नमुना छान्नुहोस्</label>
+        <select id="l_tpl" onchange="letterApplyTemplate()">
+          <option value="">-- छान्नुहोस् --</option>
+          <option value="specsent">प्राविधिक स्पेसिफिकेसन पेश गरिएको सम्बन्धमा</option>
+          <option value="boq">बी.ओ.क्यू., लागत अनुमान तथा प्राविधिक स्पेसिफिकेसन पेश</option>
+          <option value="pay">भुक्तानी पाउँ भन्ने सम्बन्धमा</option>
+          <option value="report">प्रतिवेदन पेश गरिएको सम्बन्धमा</option>
+          <option value="inspection">निरीक्षण प्रतिवेदन पेश गरिएको सम्बन्धमा</option>
+        </select>
+        <div class="row">
+          <div><label>पत्र संख्या</label><input id="l_no" oninput="letterPreview()"></div>
+          <div><label>चलानी नं.</label><input id="l_chalani" oninput="letterPreview()"></div>
+        </div>
+        <label>मिति</label><input id="l_date" oninput="letterPreview()">
+        <label>प्राप्तकर्ता</label>
+        <textarea id="l_to" rows="3" oninput="letterPreview()"></textarea>
+        <button class="btn alt sm" style="margin-top:4px" onclick="letterFillTarget()">गन्तव्य कार्यालय भर्नुहोस्</button>
+        <label style="margin-top:6px">विषय</label><textarea id="l_subject" rows="2" oninput="letterPreview()"></textarea>
+        <label>मुख्य व्यहोरा</label><textarea id="l_body" rows="7" oninput="letterPreview()"></textarea>
+      </div>
+
+      <div class="card">
+        <h3>२. संलग्न कागजात</h3>
+        <div id="l_attList"></div>
+        <button class="btn alt sm" style="margin-top:6px" onclick="letterAddAtt()">+ थप्नुहोस्</button>
+      </div>
+
+      <div class="card">
+        <h3>३. हस्ताक्षर</h3>
+        <label>नाम</label><input id="l_signName" oninput="letterPreview()">
+        <label>पद</label><input id="l_signDesig" oninput="letterPreview()">
+        <label>कार्यालय</label><input id="l_signOffice" oninput="letterPreview()">
+        <label style="margin-top:8px"><input type="checkbox" id="l_letterhead" checked onchange="letterPreview()" style="width:auto"> लेटरहेड देखाउने</label>
+        <label><input type="checkbox" id="l_contact" checked onchange="letterPreview()" style="width:auto"> दायाँ माथि वेबसाइट/इमेल/फोन देखाउने</label>
+      </div>
+
+      <div class="card">
+        <button class="btn" onclick="letterPreview()">👁 पूर्वावलोकन</button>
+        <button class="btn alt" onclick="printDoc(false)">🖨 Print / PDF</button>
+      </div>
+    </div>
+    <div><div class="preview" id="l_preview"></div></div>
+  </div>
+</section>
+
+<!-- ============ TO / BILL ============ -->
+<section id="mod-to" class="module">
+  <div class="layout">
+    <div class="no-print">
+      <div class="card">
+        <h3>१. कर्मचारी तथा भ्रमण विवरण</h3>
+        <label>नाम</label><input id="t_name" oninput="toRenderAll()">
+        <label>पद</label><input id="t_desig" oninput="toRenderAll()">
+        <label>कार्यालय</label><input id="t_office" oninput="toRenderAll()">
+        <label>स्थायी ठेगाना</label><input id="t_address" oninput="toRenderAll()">
+        <label>भ्रमण गर्ने स्थान</label><input id="t_place" oninput="toRenderAll()">
+        <button class="btn alt sm" style="margin-top:4px" onclick="$('#t_place').value=S.tgtNameNe||'';toRenderAll()">गन्तव्य कार्यालय भर्नुहोस्</button>
+
+        <label style="margin-top:6px">भ्रमणको उद्देश्य</label>
+        <select id="t_purpose" onchange="toPurposeChange()">
+          <option value="सवारी खरिद सम्बन्धी आवश्यक कार्यहरू">सवारी खरिद सम्बन्धी आवश्यक कार्यहरू</option>
+          <option value="सवारी निरीक्षण कार्य">सवारी निरीक्षण कार्य</option>
+          <option value="लिलाम सम्बन्धी आवश्यक कार्यहरू">लिलाम सम्बन्धी आवश्यक कार्यहरू</option>
+          <option value="मर्मत सम्भारसँग सम्बन्धित कार्यहरू">मर्मत सम्भारसँग सम्बन्धित कार्यहरू</option>
+          <option value="__other">अन्य (कृपया उल्लेख गर्नुहोस्)</option>
+        </select>
+        <input id="t_purposeOther" placeholder="अन्य उद्देश्य लेख्नुहोस्" style="margin-top:4px;display:none" oninput="toRenderAll()">
+
+        <label style="margin-top:6px">भ्रमण गर्ने साधन</label>
+        <select id="t_mode" onchange="toRenderAll()">
+          <option value="निजी सवारी साधन">निजी सवारी साधन</option>
+          <option value="बस">बस</option>
+          <option value="ट्याक्सी">ट्याक्सी</option>
+          <option value="कार्यालयको सवारी">कार्यालयको सवारी</option>
+          <option value="जीप">जीप</option>
+        </select>
+
+        <div class="row3" style="margin-top:8px">
+          <div><label>देखि (मिति)</label><input id="t_from" readonly oninput="toRenderAll()"></div>
+          <div><label>सम्म (मिति)</label><input id="t_to" readonly oninput="toRenderAll()"></div>
+          <div><label>कुल दिन</label><input id="t_days" type="number" value="7" oninput="toRenderAll()"></div>
+        </div>
+        <label>भ्रमण खर्च भुक्तानी गर्ने कार्यालय</label><input id="t_payOffice" oninput="toRenderAll()">
+        <label>भ्रमणसम्बन्धी अन्य आदेश</label><input id="t_otherOrder" oninput="toRenderAll()">
+      </div>
+
+      <div class="card">
+        <h3>२. खर्च विवरण</h3>
+        <div class="row3">
+          <div><label>यातायात (एक तर्फ)</label><input id="t_oneWay" type="number" value="500" oninput="toRenderAll()"></div>
+          <div><label>दैनिक भत्ता दर</label><input id="t_rate" type="number" value="1600" oninput="toRenderAll()"></div>
+          <div><label>फुटकर खर्च</label><input id="t_misc" type="number" value="0" oninput="toRenderAll()"></div>
+        </div>
+        <div class="hint">निजी सवारी साधन छानिए यातायात खर्च स्वतः "--" हुनेछ।</div>
+        <div class="row">
+          <div><label>भ्रमण आदेश संख्या</label><input id="t_toNo" oninput="toRenderAll()"></div>
+          <div><label>आदेश जारी मिति</label><input id="t_toDate" readonly oninput="toRenderAll()"></div>
+        </div>
+        <div class="row">
+          <div><label>प्रतिवेदन दर्ता नं.</label><input id="t_repNo" oninput="toRenderAll()"></div>
+          <div><label>कर्मचारी संकेत नं.</label><input id="t_empCode" oninput="toRenderAll()"></div>
+        </div>
+        <div class="row">
+          <div><label>नगदी रसिद बिल आदेश सि.नं.</label><input id="t_cashNo" oninput="toRenderAll()"></div>
+          <div><label>पेश्की (रु.)</label><input id="t_advance" type="number" value="0" oninput="toRenderAll()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>३. प्रतिवेदनका मितिहरू (वैकल्पिक)</h3>
+        <textarea id="t_dateList" rows="7" placeholder="२०८३/०३/१७&#10;२०८३/०३/१८" oninput="toRenderAll()"></textarea>
+      </div>
+
+      <div class="card">
+        <h3>४. देखाउने कागजात</h3>
+        <div class="subtabs" id="toTabs">
+          <button data-v="to" class="on" onclick="toShow('to')">भ्रमण आदेश</button>
+          <button data-v="bill" onclick="toShow('bill')">भ्रमण बिल</button>
+          <button data-v="report" onclick="toShow('report')">भ्रमण प्रतिवेदन</button>
+          <button data-v="payment" onclick="toShow('payment')">भुक्तानी निवेदन</button>
+        </div>
+        <label><input type="checkbox" id="t_letterhead" checked onchange="toRenderAll()" style="width:auto"> निवेदन/प्रतिवेदनमा लेटरहेड देखाउने</label>
+        <div style="margin-top:8px">
+          <button class="btn" onclick="toRenderAll()">👁 पूर्वावलोकन</button>
+          <button class="btn alt" onclick="printTo()">🖨 Print / PDF</button>
+        </div>
+      </div>
+    </div>
+    <div><div class="preview" id="t_preview"></div></div>
+  </div>
+</section>
+
+<!-- ============ PARAM MODAL ============ -->
+<div class="modal-overlay" id="paramModal">
+  <div class="modal">
+    <h3>🔧 मापदण्ड निर्माण (Requirement Builder)</h3>
+    <div class="hint">ड्रपडाउनबाट मापदण्डको नाम छान्नुहोस्, अपरेटर छान्नुहोस्, मान र एकाइ लेख्नुहोस्।</div>
+    <label>Criteria</label><input id="pm_criteria" readonly>
+    <label>Free text (वैकल्पिक थप विवरण)</label>
+    <textarea id="pm_text" rows="2" placeholder="यहाँ अतिरिक्त वाक्य लेख्नुहोस्..."></textarea>
+    <label style="margin-top:8px">Parameter Clauses</label>
+    <div id="pm_params"></div>
+    <button class="btn alt sm" style="margin-top:6px" onclick="pmAddParam()">+ नयाँ मापदण्ड</button>
+    <div class="flexrow" style="margin-top:14px;justify-content:flex-end">
+      <button class="btn alt" onclick="pmClose()">रद्द गर्नुहोस्</button>
+      <button class="btn" onclick="pmSave()">सुरक्षित गर्नुहोस्</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= UTIL ================= */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const NED='०१२३४५६७८९';
+const ne=s=>String(s).replace(/\d/g,d=>NED[+d]);
+const fmt=n=>{n=Number(n)||0;return n.toLocaleString('en-IN',{maximumFractionDigits:2});};
+const fmtNe=n=>ne(fmt(n));
+function num(v){
+  if(typeof v==='number') return isNaN(v)?0:v;
+  if(v==null||v===''||v==='—'||v==='-') return 0;
+  const s=String(v).replace(/,/g,'');
+  const m=s.match(/-?\d+(?:\.\d+)?/);
+  return m?parseFloat(m[0]):0;
+}
+const O1=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+const T1=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+function w2(n){return n<20?O1[n]:T1[Math.floor(n/10)]+(n%10?' '+O1[n%10]:'');}
+function w3(n){const h=Math.floor(n/100),r=n%100;return (h?O1[h]+' Hundred'+(r?' ':''):'')+(r?w2(r):'');}
+function words(n){
+  n=Math.round(Number(n)||0);
+  if(n===0)return 'Zero';
+  let out='';
+  const cr=Math.floor(n/10000000); n%=10000000;
+  const la=Math.floor(n/100000);   n%=100000;
+  const th=Math.floor(n/1000);     n%=1000;
+  if(cr) out+=(cr>99?words(cr):w3(cr))+' Crore ';
+  if(la) out+=w2(la)+' Lakh ';
+  if(th) out+=w2(th)+' Thousand ';
+  if(n)  out+=w3(n);
+  return out.trim();
+}
+const amountWords=n=>words(n)+' Rupees Only';
+function printDoc(landscape){
+  $('#pageStyle').textContent='@page{size:A4 '+(landscape?'landscape':'portrait')+';margin:'+(landscape?'8mm':'12mm')+';}';
+  requestAnimationFrame(()=>setTimeout(()=>window.print(),80));
+}
+function printTo(){ printDoc(toView==='bill'); }
+
+/* ================= OFFICE LIST ================= */
+const OFFICE_LIST = [
+  // ---------- गण्डकी प्रदेश ----------
+  {ne:'पोखरा महानगरपालिका', addrNe:'गण्डकी प्रदेश, कास्की', en:'Pokhara Metropolitan City', addrEn:'Gandaki Province, Kaski', province:'गण्डकी प्रदेश'},
+  {ne:'पुतलीबजार नगरपालिका', addrNe:'गण्डकी प्रदेश, स्याङ्जा', en:'Putalibazar Municipality', addrEn:'Gandaki Province, Syangja', province:'गण्डकी प्रदेश'},
+  {ne:'भीरकोट नगरपालिका', addrNe:'गण्डकी प्रदेश, स्याङ्जा', en:'Bhirkot Municipality', addrEn:'Gandaki Province, Syangja', province:'गण्डकी प्रदेश'},
+  {ne:'व्यास नगरपालिका', addrNe:'गण्डकी प्रदेश, तनहुँ', en:'Byas Municipality', addrEn:'Gandaki Province, Tanahun', province:'गण्डकी प्रदेश'},
+  {ne:'शुक्लागण्डकी नगरपालिका', addrNe:'गण्डकी प्रदेश, तनहुँ', en:'Shuklagandaki Municipality', addrEn:'Gandaki Province, Tanahun', province:'गण्डकी प्रदेश'},
+  {ne:'बन्दिपुर नगरपालिका', addrNe:'गण्डकी प्रदेश, तनहुँ', en:'Bandipur Municipality', addrEn:'Gandaki Province, Tanahun', province:'गण्डकी प्रदेश'},
+  {ne:'भानु नगरपालिका', addrNe:'गण्डकी प्रदेश, तनहुँ', en:'Bhanu Municipality', addrEn:'Gandaki Province, Tanahun', province:'गण्डकी प्रदेश'},
+  {ne:'गल्याङ नगरपालिका', addrNe:'गण्डकी प्रदेश, स्याङ्जा', en:'Galyang Municipality', addrEn:'Gandaki Province, Syangja', province:'गण्डकी प्रदेश'},
+  {ne:'चापाकोट नगरपालिका', addrNe:'गण्डकी प्रदेश, स्याङ्जा', en:'Chapakot Municipality', addrEn:'Gandaki Province, Syangja', province:'गण्डकी प्रदेश'},
+  {ne:'आँबुखैरेनी नगरपालिका', addrNe:'गण्डकी प्रदेश, तनहुँ', en:'Anbukhaireni Municipality', addrEn:'Gandaki Province, Tanahun', province:'गण्डकी प्रदेश'},
+  {ne:'बागलुङ नगरपालिका', addrNe:'गण्डकी प्रदेश, बागलुङ', en:'Baglung Municipality', addrEn:'Gandaki Province, Baglung', province:'गण्डकी प्रदेश'},
+  {ne:'गलकोट नगरपालिका', addrNe:'गण्डकी प्रदेश, बागलुङ', en:'Galkot Municipality', addrEn:'Gandaki Province, Baglung', province:'गण्डकी प्रदेश'},
+  {ne:'दोरखा नगरपालिका', addrNe:'गण्डकी प्रदेश, लमजुङ', en:'Dordi/Duradanda Municipality', addrEn:'Gandaki Province, Lamjung', province:'गण्डकी प्रदेश'},
+  {ne:'बेसीशहर नगरपालिका', addrNe:'गण्डकी प्रदेश, लमजुङ', en:'Besisahar Municipality', addrEn:'Gandaki Province, Lamjung', province:'गण्डकी प्रदेश'},
+  {ne:'मनाङ ङिस्याङ नगरपालिका', addrNe:'गण्डकी प्रदेश, मनाङ', en:'Manang Ngisyang Municipality', addrEn:'Gandaki Province, Manang', province:'गण्डकी प्रदेश'},
+  {ne:'जोमसोम नगरपालिका', addrNe:'गण्डकी प्रदेश, मुस्ताङ', en:'Jomsom Municipality', addrEn:'Gandaki Province, Mustang', province:'गण्डकी प्रदेश'},
+  {ne:'गण्डकी प्रदेश प्रशिक्षण प्रतिष्ठान', addrNe:'पोखरा, कास्की', en:'Gandaki Province Training Academy', addrEn:'Pokhara, Kaski', province:'गण्डकी प्रदेश'},
+  {ne:'जिल्ला प्रशासन कार्यालय, कास्की', addrNe:'पोखरा, कास्की', en:'District Administration Office, Kaski', addrEn:'Pokhara, Kaski', province:'गण्डकी प्रदेश'},
+  {ne:'यातायात व्यवस्था कार्यालय, कास्की', addrNe:'पोखरा, कास्की', en:'Transport Management Office, Kaski', addrEn:'Pokhara, Kaski', province:'गण्डकी प्रदेश'},
+  {ne:'शिक्षा विकास तथा समन्वय इकाई, कास्की', addrNe:'पोखरा, कास्की', en:'Education Development & Coordination Unit, Kaski', addrEn:'Pokhara, Kaski', province:'गण्डकी प्रदेश'},
+  {ne:'कोष तथा लेखा नियन्त्रक कार्यालय, कास्की', addrNe:'पोखरा, कास्की', en:'Financial Comptroller General Office, Kaski', addrEn:'Pokhara, Kaski', province:'गण्डकी प्रदेश'},
+
+  // ---------- बागमती प्रदेश ----------
+  {ne:'काठमाडौं महानगरपालिका', addrNe:'बागमती प्रदेश, काठमाडौं', en:'Kathmandu Metropolitan City', addrEn:'Bagmati Province, Kathmandu', province:'बागमती प्रदेश'},
+  {ne:'ललितपुर महानगरपालिका', addrNe:'बागमती प्रदेश, ललितपुर', en:'Lalitpur Metropolitan City', addrEn:'Bagmati Province, Lalitpur', province:'बागमती प्रदेश'},
+  {ne:'भरतपुर महानगरपालिका', addrNe:'बागमती प्रदेश, चितवन', en:'Bharatpur Metropolitan City', addrEn:'Bagmati Province, Chitwan', province:'बागमती प्रदेश'},
+  {ne:'हेटौंडा उपमहानगरपालिका', addrNe:'बागमती प्रदेश, मकवानपुर', en:'Hetauda Sub-Metropolitan City', addrEn:'Bagmati Province, Makwanpur', province:'बागमती प्रदेश'},
+  {ne:'बनेपा नगरपालिका', addrNe:'बागमती प्रदेश, काभ्रेपलाञ्चोक', en:'Banepa Municipality', addrEn:'Bagmati Province, Kavrepalanchok', province:'बागमती प्रदेश'},
+  {ne:'धुलिखेल नगरपालिका', addrNe:'बागमती प्रदेश, काभ्रेपलाञ्चोक', en:'Dhulikhel Municipality', addrEn:'Bagmati Province, Kavrepalanchok', province:'बागमती प्रदेश'},
+  {ne:'विदुर नगरपालिका', addrNe:'बागमती प्रदेश, नुवाकोट', en:'Bidur Municipality', addrEn:'Bagmati Province, Nuwakot', province:'बागमती प्रदेश'},
+  {ne:'सिन्धुली नगरपालिका', addrNe:'बागमती प्रदेश, सिन्धुली', en:'Sindhuli Municipality', addrEn:'Bagmati Province, Sindhuli', province:'बागमती प्रदेश'},
+
+  // ---------- कोशी प्रदेश ----------
+  {ne:'विराटनगर महानगरपालिका', addrNe:'कोशी प्रदेश, मोरङ', en:'Biratnagar Metropolitan City', addrEn:'Koshi Province, Morang', province:'कोशी प्रदेश'},
+  {ne:'धरान उपमहानगरपालिका', addrNe:'कोशी प्रदेश, सुनसरी', en:'Dharan Sub-Metropolitan City', addrEn:'Koshi Province, Sunsari', province:'कोशी प्रदेश'},
+  {ne:'इटहरी उपमहानगरपालिका', addrNe:'कोशी प्रदेश, सुनसरी', en:'Itahari Sub-Metropolitan City', addrEn:'Koshi Province, Sunsari', province:'कोशी प्रदेश'},
+  {ne:'दमक नगरपालिका', addrNe:'कोशी प्रदेश, झापा', en:'Damak Municipality', addrEn:'Koshi Province, Jhapa', province:'कोशी प्रदेश'},
+  {ne:'बिर्तामोड नगरपालिका', addrNe:'कोशी प्रदेश, झापा', en:'Birtamod Municipality', addrEn:'Koshi Province, Jhapa', province:'कोशी प्रदेश'},
+  {ne:'मेचीनगर नगरपालिका', addrNe:'कोशी प्रदेश, झापा', en:'Mechinagar Municipality', addrEn:'Koshi Province, Jhapa', province:'कोशी प्रदेश'},
+  {ne:'भद्रपुर नगरपालिका', addrNe:'कोशी प्रदेश, झापा', en:'Bhadrapur Municipality', addrEn:'Koshi Province, Jhapa', province:'कोशी प्रदेश'},
+  {ne:'इलाम नगरपालिका', addrNe:'कोशी प्रदेश, इलाम', en:'Ilam Municipality', addrEn:'Koshi Province, Ilam', province:'कोशी प्रदेश'},
+
+  // ---------- मधेश प्रदेश ----------
+  {ne:'जनकपुर महानगरपालिका', addrNe:'मधेश प्रदेश, धनुषा', en:'Janakpur Metropolitan City', addrEn:'Madhesh Province, Dhanusha', province:'मधेश प्रदेश'},
+  {ne:'वीरगञ्ज महानगरपालिका', addrNe:'मधेश प्रदेश, पर्सा', en:'Birgunj Metropolitan City', addrEn:'Madhesh Province, Parsa', province:'मधेश प्रदेश'},
+  {ne:'राजविराज नगरपालिका', addrNe:'मधेश प्रदेश, सप्तरी', en:'Rajbiraj Municipality', addrEn:'Madhesh Province, Saptari', province:'मधेश प्रदेश'},
+  {ne:'गौशाला नगरपालिका', addrNe:'मधेश प्रदेश, महोत्तरी', en:'Gaushala Municipality', addrEn:'Madhesh Province, Mahottari', province:'मधेश प्रदेश'},
+
+  // ---------- लुम्बिनी प्रदेश ----------
+  {ne:'बुटवल उपमहानगरपालिका', addrNe:'लुम्बिनी प्रदेश, रुपन्देही', en:'Butwal Sub-Metropolitan City', addrEn:'Lumbini Province, Rupandehi', province:'लुम्बिनी प्रदेश'},
+  {ne:'सिद्धार्थनगर नगरपालिका', addrNe:'लुम्बिनी प्रदेश, रुपन्देही', en:'Siddharthanagar Municipality', addrEn:'Lumbini Province, Rupandehi', province:'लुम्बिनी प्रदेश'},
+  {ne:'घोराही उपमहानगरपालिका', addrNe:'लुम्बिनी प्रदेश, दाङ', en:'Ghorahi Sub-Metropolitan City', addrEn:'Lumbini Province, Dang', province:'लुम्बिनी प्रदेश'},
+  {ne:'तुलसीपुर उपमहानगरपालिका', addrNe:'लुम्बिनी प्रदेश, दाङ', en:'Tulsipur Sub-Metropolitan City', addrEn:'Lumbini Province, Dang', province:'लुम्बिनी प्रदेश'},
+  {ne:'नेपालगन्ज उपमहानगरपालिका', addrNe:'लुम्बिनी प्रदेश, बाँके', en:'Nepalgunj Sub-Metropolitan City', addrEn:'Lumbini Province, Banke', province:'लुम्बिनी प्रदेश'},
+  {ne:'कोहलपुर नगरपालिका', addrNe:'लुम्बिनी प्रदेश, बाँके', en:'Kohalpur Municipality', addrEn:'Lumbini Province, Banke', province:'लुम्बिनी प्रदेश'},
+
+  // ---------- कर्णाली प्रदेश ----------
+  {ne:'वीरेन्द्रनगर नगरपालिका', addrNe:'कर्णाली प्रदेश, सुर्खेत', en:'Birendranagar Municipality', addrEn:'Karnali Province, Surkhet', province:'कर्णाली प्रदेश'},
+  {ne:'जुम्ला नगरपालिका', addrNe:'कर्णाली प्रदेश, जुम्ला', en:'Jumla Municipality', addrEn:'Karnali Province, Jumla', province:'कर्णाली प्रदेश'},
+
+  // ---------- सुदूरपश्चिम प्रदेश ----------
+  {ne:'धनगढी उपमहानगरपालिका', addrNe:'सुदूरपश्चिम प्रदेश, कैलाली', en:'Dhangadhi Sub-Metropolitan City', addrEn:'Sudurpashchim Province, Kailali', province:'सुदूरपश्चिम प्रदेश'},
+  {ne:'टीकापुर नगरपालिका', addrNe:'सुदूरपश्चिम प्रदेश, कैलाली', en:'Tikapur Municipality', addrEn:'Sudurpashchim Province, Kailali', province:'सुदूरपश्चिम प्रदेश'},
+  {ne:'भीमदत्त नगरपालिका', addrNe:'सुदूरपश्चिम प्रदेश, कञ्चनपुर', en:'Bhimdatta Municipality', addrEn:'Sudurpashchim Province, Kanchanpur', province:'सुदूरपश्चिम प्रदेश'}
+];
+
+function initOfficeSelect(){
+  const sel=$('#s_tgtSelect');
+  if(!sel) return;
+  renderOfficeSelect();
+  // Match current value
+  const cur=S.tgtNameNe;
+  if(cur){
+    const idx=OFFICE_LIST.findIndex(o=>o.ne===cur);
+    if(idx>=0) sel.value=String(idx);
+    else sel.value='__custom';
+  }
+}
+function renderOfficeSelect(){
+  const sel=$('#s_tgtSelect');
+  if(!sel) return;
+  const q=($('#s_tgtFilter').value||'').trim().toLowerCase();
+  const groups={};
+  OFFICE_LIST.forEach((o,i)=>{
+    if(q){
+      const hay=(o.ne+' '+(o.en||'')+' '+(o.addrNe||'')).toLowerCase();
+      if(!hay.includes(q)) return;
+    }
+    const p=o.province||'अन्य';
+    (groups[p]=groups[p]||[]).push({o,i});
+  });
+  let html='<option value="">-- छान्नुहोस् --</option>';
+  for(const p in groups){
+    html+='<optgroup label="'+esc(p)+'">';
+    groups[p].forEach(({o,i})=>{
+      html+='<option value="'+i+'">'+esc(o.ne)+' — '+esc(o.addrNe)+'</option>';
+    });
+    html+='</optgroup>';
+  }
+  html+='<option value="__custom">✏️ अन्य (आफैं टाइप गर्नुहोस्)</option>';
+  sel.innerHTML=html;
+}
+function officeFilterChange(){ renderOfficeSelect(); }
+function onTargetOfficeSelect(){
+  const v=$('#s_tgtSelect').value;
+  if(v==='' || v==='__custom') return;
+  const o=OFFICE_LIST[+v];
+  if(!o) return;
+  $('#s_tgtNameNe').value=o.ne;
+  $('#s_tgtAddrNe').value=o.addrNe;
+  $('#s_tgtNameEn').value=o.en;
+  $('#s_tgtAddrEn').value=o.addrEn;
+  // Auto-save + refresh previews
+  saveSettingsForm();
+}
+function clearTargetOffice(){
+  $('#s_tgtSelect').value='';
+  $('#s_tgtNameNe').value='';
+  $('#s_tgtAddrNe').value='';
+  $('#s_tgtNameEn').value='';
+  $('#s_tgtAddrEn').value='';
+  saveSettingsForm();
+}
+
+/* ================= NEPALI DATE PICKER ================= */
+const NP_MONTHS=['बैशाख','जेठ','असार','साउन','भदौ','असोज','कार्तिक','मंसिर','पुष','माघ','फागुन','चैत'];
+const NP_DAYS_SHORT=['आ','सो','मं','बु','बि','शु','श'];
+const NP_DATA={
+  2075:[31,32,31,32,31,30,30,30,29,29,30,30],2076:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2077:[31,32,31,32,31,30,30,30,29,30,29,31],2078:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2079:[31,32,31,32,31,30,30,30,29,30,29,31],2080:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2081:[31,31,32,31,31,31,30,29,30,29,30,30],2082:[30,32,31,32,31,30,30,30,29,30,29,31],
+  2083:[31,31,32,31,31,31,30,29,30,29,30,30],2084:[31,31,32,31,31,30,30,30,29,30,29,31],
+  2085:[31,32,31,32,30,31,30,30,29,30,29,31],2086:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2087:[31,31,32,31,31,30,30,30,29,30,29,31],2088:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2089:[30,32,31,32,31,30,30,30,29,30,29,31],2090:[31,31,32,31,31,31,30,29,30,29,30,30]
+};
+const NP_REF_BS={y:2081,m:1,d:1};
+const NP_REF_AD=new Date(2024,3,13);
+function bsToAdDays(bsy,bsm,bsd){
+  if(bsy>NP_REF_BS.y || (bsy===NP_REF_BS.y && (bsm>NP_REF_BS.m || (bsm===NP_REF_BS.m && bsd>=NP_REF_BS.d)))){
+    let days=0;
+    for(let y=NP_REF_BS.y;y<bsy;y++) days+=NP_DATA[y].reduce((a,b)=>a+b,0);
+    for(let m=1;m<bsm;m++) days+=NP_DATA[bsy][m-1];
+    days+=bsd-NP_REF_BS.d;
+    return days;
+  } else {
+    let days=0;
+    for(let y=bsy;y<NP_REF_BS.y;y++) days-=NP_DATA[y].reduce((a,b)=>a+b,0);
+    for(let m=bsm;m<NP_REF_BS.m;m++) days-=NP_DATA[bsy][m-1];
+    days+=bsd-NP_REF_BS.d;
+    return days;
+  }
+}
+function adToBs(adDate){
+  const days=Math.round((adDate-NP_REF_AD)/86400000);
+  let y=NP_REF_BS.y,m=NP_REF_BS.m,d=NP_REF_BS.d+days;
+  while(d<1){m--;if(m<1){y--;m=12;}d+=NP_DATA[y][m-1];}
+  while(true){const md=NP_DATA[y][m-1];if(d>md){d-=md;m++;if(m>12){m=1;y++;}}else break;}
+  return {y,m,d};
+}
+function bsToAd(bsy,bsm,bsd){
+  const days=bsToAdDays(bsy,bsm,bsd);
+  return new Date(NP_REF_AD.getTime()+days*86400000);
+}
+function getWeekday(bsy,bsm,bsd){return bsToAd(bsy,bsm,bsd).getDay();}
+function todayBS(){return adToBs(new Date());}
+function parseNpValue(s){
+  if(!s) return null;
+  s=String(s).replace(/[०-९]/g,d=>String(NED.indexOf(d)));
+  const m=s.match(/(\d+)[\/\-](\d+)[\/\-](\d+)/);
+  if(!m) return null;
+  return {y:+m[1],m:+m[2],d:+m[3]};
+}
+function formatNpDate(y,m,d){return ne(String(y))+"/"+ne(String(m).padStart(2,'0'))+"/"+ne(String(d).padStart(2,'0'));}
+function attachNpDatePicker(el){
+  if(!el) return;
+  el.readOnly=true;
+  el.style.cursor='pointer';
+  el.addEventListener('click',e=>{e.stopPropagation();openNpPicker(el);});
+}
+function closeAllNpPickers(){
+  document.querySelectorAll('.np-picker-popup').forEach(x=>x.remove());
+  document.removeEventListener('click',onDocClickPicker);
+}
+function onDocClickPicker(e){
+  if(e.target.closest('.np-picker-popup')) return;
+  if(e.target.classList && e.target.classList.contains('np-date-input')) return;
+  closeAllNpPickers();
+}
+function openNpPicker(inputEl){
+  closeAllNpPickers();
+  const cur=parseNpValue(inputEl.value)||todayBS();
+  const popup=document.createElement('div');
+  popup.className='np-picker-popup';
+  document.body.appendChild(popup);
+  const rect=inputEl.getBoundingClientRect();
+  let left=rect.left, top=rect.bottom+4;
+  if(left+290>window.innerWidth) left=window.innerWidth-300;
+  if(top+300>window.innerHeight) top=rect.top-300;
+  popup.style.left=Math.max(6,left)+'px';
+  popup.style.top=Math.max(6,top)+'px';
+
+  let viewY=cur.y, viewM=cur.m;
+  const minY=Math.min(...Object.keys(NP_DATA).map(Number));
+  const maxY=Math.max(...Object.keys(NP_DATA).map(Number));
+
+  function render(){
+    const yearsOpts=[];
+    for(let y=minY;y<=maxY;y++) yearsOpts.push('<option value="'+y+'"'+(y===viewY?' selected':'')+'>'+ne(y)+'</option>');
+    let html='<div class="np-picker-header">'+
+      '<button type="button" data-d="py">«</button>'+
+      '<select class="np-y-sel" style="flex:1">'+yearsOpts.join('')+'</select>'+
+      '<button type="button" data-d="pm">‹</button>'+
+      '<select class="np-m-sel" style="flex:1">'+NP_MONTHS.map((mn,i)=>'<option value="'+(i+1)+'"'+((i+1)===viewM?' selected':'')+'>'+mn+'</option>').join('')+'</select>'+
+      '<button type="button" data-d="nm">›</button>'+
+      '<button type="button" data-d="ny">»</button>'+
+    '</div>';
+    html+='<div class="np-picker-grid">';
+    NP_DAYS_SHORT.forEach(d=>html+='<div class="np-picker-day head">'+d+'</div>');
+    const firstWd=getWeekday(viewY,viewM,1);
+    for(let i=0;i<firstWd;i++) html+='<div></div>';
+    const dim=NP_DATA[viewY][viewM-1];
+    const today=todayBS();
+    for(let d=1;d<=dim;d++){
+      const isT=(today.y===viewY&&today.m===viewM&&today.d===d);
+      html+='<div class="np-picker-day'+(isT?' today':'')+'" data-day="'+d+'">'+ne(d)+'</div>';
+    }
+    html+='</div>';
+    popup.innerHTML=html;
+    popup.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',ev=>{
+        ev.stopPropagation();
+        const d=b.dataset.d;
+        if(d==='py') viewY=Math.max(minY,viewY-1);
+        else if(d==='ny') viewY=Math.min(maxY,viewY+1);
+        else if(d==='pm'){viewM--; if(viewM<1){viewM=12; viewY=Math.max(minY,viewY-1);}}
+        else if(d==='nm'){viewM++; if(viewM>12){viewM=1; viewY=Math.min(maxY,viewY+1);}}
+        render();
+      });
+    });
+    const ySel=popup.querySelector('.np-y-sel');
+    const mSel=popup.querySelector('.np-m-sel');
+    if(ySel) ySel.addEventListener('change',e=>{viewY=+e.target.value; render();});
+    if(mSel) mSel.addEventListener('change',e=>{viewM=+e.target.value; render();});
+    popup.querySelectorAll('.np-picker-day[data-day]').forEach(el=>{
+      el.addEventListener('click',ev=>{
+        ev.stopPropagation();
+        const d=+el.dataset.day;
+        inputEl.value=formatNpDate(viewY,viewM,d);
+        closeAllNpPickers();
+        inputEl.dispatchEvent(new Event('input'));
+        inputEl.dispatchEvent(new Event('change'));
+      });
+    });
+  }
+  render();
+  setTimeout(()=>document.addEventListener('click',onDocClickPicker),0);
+}
+
+/* ================= SETTINGS ================= */
+const LS='docgen_v4';
+const OLD_FOOTER='पोखरा महानगरपालिका – गण्डकी बहुप्राविधिक शिक्षालय';
+const DEFAULTS={
+  org1:'पोखरा महानगरपालिका', org2:'नगर कार्यपालिकाको कार्यालय', org3:'गण्डकी प्रदेश, कास्की',
+  org4:'गण्डकी बहुप्राविधिक शिक्षालय', org5:'पोखरा–२९',
+  eng1:'Pokhara Metropolitan City', eng2:'Office of the Municipal Executive',
+  eng3:'Gandaki Province, Kaski', eng4:'Gandaki Polytechnic Institute',
+  website:'www.pokharagpi.edu.np', email:'pokharamun.gmt@gmail.com', phone:'०६१-५३६०९७',
+  footer:'',
+  tgtNameNe:'', tgtAddrNe:'', tgtNameEn:'', tgtAddrEn:'',
+  logoLeft:'', logoRight:'',
+  prepName:'सरोज चालिसे', prepDesig:'मेकानिकल इन्जिनियर / अटोमोबाइल प्रशिक्षक',
+  nec:'NEC दर्ता नं.: २०१६, मेकानिकल A श्रेणी', appName:'',
+  bankHolder:'SAROJ CHALISE', bankAcc:'1005752373578001',
+  bankName:'NIC ASIA Bank', bankBranch:'New Road, Pokhara'
+};
+let stored={};
+try{stored=JSON.parse(localStorage.getItem(LS+'_set')||'{}');}catch(e){}
+try{
+  const legacy=JSON.parse(localStorage.getItem('docgen_v3_set')||'{}');
+  if(legacy.footer===OLD_FOOTER) legacy.footer='';
+  stored=Object.assign({},legacy,stored);
+}catch(e){}
+let S=Object.assign({},DEFAULTS,stored);
+
+function loadSettingsForm(){
+  const map={s_org1:'org1',s_org2:'org2',s_org3:'org3',s_org4:'org4',s_org5:'org5',
+    s_eng1:'eng1',s_eng2:'eng2',s_eng3:'eng3',s_eng4:'eng4',
+    s_website:'website',s_email:'email',s_phone:'phone',s_footer:'footer',
+    s_tgtNameNe:'tgtNameNe',s_tgtAddrNe:'tgtAddrNe',s_tgtNameEn:'tgtNameEn',s_tgtAddrEn:'tgtAddrEn',
+    s_prepName:'prepName',s_prepDesig:'prepDesig',s_nec:'nec',s_appName:'appName',
+    s_bankHolder:'bankHolder',s_bankAcc:'bankAcc',s_bankName:'bankName',s_bankBranch:'bankBranch'};
+  for(const id in map){const el=$('#'+id);if(el) el.value=S[map[id]]||'';}
+  renderLogoPreview();settingsPreview();
+  initOfficeSelect();
+}
+function saveSettingsForm(){
+  const map={s_org1:'org1',s_org2:'org2',s_org3:'org3',s_org4:'org4',s_org5:'org5',
+    s_eng1:'eng1',s_eng2:'eng2',s_eng3:'eng3',s_eng4:'eng4',
+    s_website:'website',s_email:'email',s_phone:'phone',s_footer:'footer',
+    s_tgtNameNe:'tgtNameNe',s_tgtAddrNe:'tgtAddrNe',s_tgtNameEn:'tgtNameEn',s_tgtAddrEn:'tgtAddrEn',
+    s_prepName:'prepName',s_prepDesig:'prepDesig',s_nec:'nec',s_appName:'appName',
+    s_bankHolder:'bankHolder',s_bankAcc:'bankAcc',s_bankName:'bankName',s_bankBranch:'bankBranch'};
+  for(const id in map){const el=$('#'+id);if(el) S[map[id]]=el.value;}
+  localStorage.setItem(LS+'_set',JSON.stringify(S));
+  $('#saveMsg').textContent='✔ सेभ भयो';
+  setTimeout(()=>$('#saveMsg').textContent='',1800);
+  settingsPreview();
+  if(typeof specPreviewRender==='function') specPreviewRender();
+  if(typeof letterPreview==='function') letterPreview();
+  if(typeof toRenderAll==='function') toRenderAll();
+  if(typeof inspPreview==='function') inspPreview();
+  if(typeof estPreview==='function') estPreview();
+}
+function bindLogo(id,key){
+  $('#'+id).addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{S[key]=ev.target.result;localStorage.setItem(LS+'_set',JSON.stringify(S));renderLogoPreview();settingsPreview();};
+    r.readAsDataURL(f);
+  });
+}
+function clearLogo(side){
+  S[side==='left'?'logoLeft':'logoRight']='';
+  localStorage.setItem(LS+'_set',JSON.stringify(S));
+  renderLogoPreview();settingsPreview();
+}
+function renderLogoPreview(){
+  let h='';
+  if(S.logoLeft) h+='<img src="'+S.logoLeft+'" style="height:70px;margin-right:12px;border:1px solid #ddd;padding:3px">';
+  if(S.logoRight) h+='<img src="'+S.logoRight+'" style="height:70px;border:1px solid #ddd;padding:3px">';
+  $('#logoPreview').innerHTML=h||'<span class="hint">लोगो अपलोड गरिएको छैन।</span>';
+}
+function letterheadHTML(lang){
+  const L=S.logoLeft?'<img src="'+S.logoLeft+'" style="width:2.6cm;max-height:2.6cm;object-fit:contain">':'';
+  const R=S.logoRight?'<img src="'+S.logoRight+'" style="width:2.6cm;max-height:2.6cm;object-fit:contain">':'';
+  if(lang==='en'){
+    return '<div class="lh"><table style="width:100%;border:0"><tr>'+
+      '<td style="width:2.9cm;text-align:center;border:0">'+L+'</td>'+
+      '<td style="text-align:center;border:0">'+
+        '<div style="font-size:14pt;font-weight:700">'+esc(S.eng1)+'</div>'+
+        '<div style="font-size:11pt">'+esc(S.eng2)+'</div>'+
+        '<div style="font-size:10pt">'+esc(S.eng3)+'</div>'+
+        '<div style="font-size:13pt;font-weight:700;margin-top:3px">'+esc(S.eng4)+'</div>'+
+      '</td>'+
+      '<td style="width:2.9cm;text-align:center;border:0">'+R+'</td>'+
+      '</tr></table><div class="line"></div></div>';
+  }
+  return '<div class="lh"><table style="width:100%;border:0"><tr>'+
+    '<td style="width:2.9cm;text-align:center;border:0">'+L+'</td>'+
+    '<td style="text-align:center;border:0">'+
+      '<div style="font-size:15pt;font-weight:700">'+esc(S.org1)+'</div>'+
+      '<div style="font-size:11pt;font-weight:600">'+esc(S.org2)+'</div>'+
+      '<div style="font-size:10pt">'+esc(S.org3)+'</div>'+
+      '<div style="font-size:14pt;font-weight:700;margin-top:3px">'+esc(S.org4)+'</div>'+
+      '<div style="font-size:10pt">'+esc(S.org5)+'</div>'+
+    '</td>'+
+    '<td style="width:2.9cm;text-align:center;border:0">'+R+'</td>'+
+    '</tr></table><div class="line"></div></div>';
+}
+function targetHeaderHTML(lang){
+  const name=lang==='en'?(S.tgtNameEn||S.tgtNameNe):(S.tgtNameNe||S.tgtNameEn);
+  const addr=lang==='en'?(S.tgtAddrEn||S.tgtAddrNe):(S.tgtAddrNe||S.tgtAddrEn);
+  if(!name) return '<div class="hint" style="border:1px dashed #aaa;padding:6px;text-align:center;color:#888">सेटिङमा गन्तव्य कार्यालय भरिएको छैन।</div>';
+  return '<div class="lh"><div style="text-align:center">'+
+    '<div style="font-size:15pt;font-weight:700">'+esc(name)+'</div>'+
+    (addr?'<div style="font-size:11pt">'+esc(addr)+'</div>':'')+
+    '</div><div class="line"></div></div>';
+}
+function footerHTML(){return S.footer?'<div class="ftr">'+esc(S.footer)+'</div>':'';}
+function headerHTML(mode,lang){
+  if(mode==='own') return letterheadHTML(lang||'en');
+  if(mode==='target') return targetHeaderHTML(lang||'en');
+  return '';
+}
+function settingsPreview(){
+  $('#settingsPreview').innerHTML='<div class="doc">'+letterheadHTML('ne')+
+   '<p class="small">यो लेटरहेड सबै कागजातमा स्वतः प्रयोग हुनेछ।</p>'+
+   '<p class="small">'+esc(S.website)+' | '+esc(S.email)+' | '+esc(S.phone)+'</p>'+
+   '<h3>गन्तव्य कार्यालयको हेडर</h3>'+targetHeaderHTML('ne')+footerHTML()+'</div>';
+}
+
+/* ================= TABS ================= */
+function showTab(id){
+  $$('.module').forEach(m=>m.classList.toggle('active',m.id==='mod-'+id));
+  $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));
+  window.scrollTo(0,0);
+}
+
+/* ================= SPEC TEMPLATES ================= */
+const SPEC_TEMPLATES={
+'Car (Sedan / Hatchback)':{title:'Technical Specifications of Car',rows:[
+['General','Four door, Right Hand Drive Car suitable to operate in rough and hilly road condition of Nepal. Shall have seating capacity for at least 5 persons including driver.'],
+['Engine','Four stroke, water cooled gasoline engine, engine volume not less than 995 cc, developing maximum power output not less than 65 PS and maximum torque not less than 85 Nm at governed RPM.'],
+['Emission Standard','The emission standard of the offered vehicle must be in compliance with or superior to the applicable standard as prescribed by Nepal Vehicle Mass Emission Standard which is to be certified by Department of Transport Management.'],
+['Turning Radius','Not more than 4.7 m. Less turning radius preferred.'],
+['Dimensions','Length: not less than 3600 mm; Width: not less than 1600 mm; Height: not less than 1500 mm; Wheelbase: not less than 2400 mm.'],
+['Gauges','Fitted with all gauges, indicators and signals necessary for efficient operation, functional monitoring, vehicle performance and maintenance.'],
+['Transmission','Manual shift, at least five forward and one reverse, floor mounted.'],
+['Ground Clearance','Minimum 170 mm.'],
+['Suspension','McPherson strut / coil spring / anti-roll bar / independent lower wishbone for front wheel and torsion beam for rear wheel.'],
+['Tyres','Standard size.'],
+['Steering','Power assisted / Power steering.'],
+['Brakes','Front disc type, rear drum type, hydraulic operated on all wheels with parking brake.'],
+['Cab','Four side doors and separate luggage compartment at the rear. All metallic cab with insulated roof, right hand drive, tinted laminated door glasses.'],
+['Chassis & Frame','Steel, heavy duty suitable for rough road condition.'],
+['Essential Accessories','Head light, tail and rear light, reversing light and turn signals; Cabin lights; A/C and Heater; Spare wheel with tyre and tube; Front seat belts; ABS + EBD; Air bags; Chrome grill; Body colour door handle; Electrically adjustable ORVM; 60:40 back seat flip; Idle start/stop function; Parking sensor.'],
+['Instructions','All signs and instructions in the vehicle shall be in English.'],
+['Manuals',"One copy of the Operator's and Owner's Instructions and Maintenance manual in English shall be supplied with each vehicle."],
+['Tools','A set of tools with a tool bag, as required for general maintenance, shall be supplied with each unit.'],
+['Color','Standard colour.'],
+['Warranty & Maintenance','Manufacturer shall provide a minimum of one year warranty and one year free servicing after acceptance.'],
+['Delivery','The vehicle shall be delivered to the Office of the Municipal Executive, Pokhara Metropolitan City.']]},
+'Scooter':{title:'Technical Specification of Scooter',rows:[
+['General','Scooter of sturdy design.'],
+['Engine','Fuel injection (FI) engine with displacement 125 CC ± 3 CC. Max Power: not less than 8 PS at rated RPM. Max Torque: not less than 9.5 Nm at rated RPM.'],
+['Brake','Front Brake: Disc operated. Rear Brake: Disc / drum operated.'],
+['Ground Clearance','Not less than 145 mm.'],
+['Warranty and Accessories',"Accessories: Helmet and Owner's manual in English. Warranty: minimum one year upon acceptance. Servicing: minimum first four free services."],
+['Proven Performance','Manufacture year must be 2025 or later.'],
+['Delivery','Delivered to Office of the Municipal Executive, Pokhara Metropolitan City.']]},
+'Motorcycle':{title:'Technical Specification of Motorcycle',rows:[
+['General','Motorcycle of sturdy design, suitable for official field use.'],
+['Engine','Fuel injection engine with displacement not less than 149 cc, air cooled, 4-stroke engine, electric starter. Maximum power not less than 9 kW at rated RPM. Maximum torque not less than 13 N.m at rated RPM.'],
+['Brake and Tyre','Front brake: Disc brake. Rear brake: Disc brake. Tubeless tyres.'],
+['Dimensions and Capacity',"Ground clearance greater than 160 mm. Seat height, wheelbase and kerb weight suitable for normal field operation."],
+['Features','Digital meter, LED headlight, suitable suspension system for field use, safety features as provided by the manufacturer.'],
+['Warranty and Accessories',"Helmets and owner's manual in English. Warranty: minimum one year upon acceptance."],
+['Proven Performance','Manufacture year must be 2025 or later.'],
+['Delivery','Delivered to Office of the Municipal Executive, Pokhara Metropolitan City.']]},
+'4WD Double Cab Pickup':{title:'Technical Specifications of Four-Wheel Drive Double Cab Pickup Vehicle',rows:[
+['General','4WD Double Cab Pickup, Right Hand Drive model with two- and four-wheel drive, suitable for driving both in ON-ROAD and OFF-ROAD conditions.'],
+['Engine','Engine displacement of at least 2000 CC. Four stroke, water cooled diesel engine, developing rated maximum power output not less than 140 bhp and maximum torque not less than 320 N-m at rated RPM.'],
+['Emission Standard','The emission standard of the offered vehicle must be in compliance with or superior to the applicable standard as prescribed by "Nepal Vehicle Mass Emission Standard 2069 (Euro III)".'],
+['Gauges','Fitted with all gauges, indicators and signals necessary for efficient operation and maintenance.'],
+['Transmission','Manual shift, at least six forward and one reverse, all forward synchromesh, floor mounted, 4WD engaged through control at driver.'],
+['Ground Clearance / Model','High ground clearance preferred, minimum 210 mm. The manufacture year of the vehicle shall be 2025 or later.'],
+['Turning Radius / Fuel Tank','Turning radius less than 7 m. Fuel tank not less than 75 ltr.'],
+['Suspension','Front: Double wishbone with coil spring and stabilizer, shock absorber. Rear: Leaf spring suspension.'],
+['Tyres','Standard size.'],
+['Dimensions','Wheel base at least 3010 mm; Overall width at least 1820 mm; Overall length at least 5170 mm; Overall height at least 1910 mm; GVW at least 3150 kg.'],
+['Steering','Hydraulic Power Steering.'],
+['Brakes','Front caliper type ventilated disc, rear drum type, and parking brake.'],
+['Cab','4 doors, all metallic cab with insulated roof, right hand drive, laminated glass windscreen, wipers, glass windows on doors.'],
+['Chassis and Frame','Steel, heavy duty high rigidity frame structure suitable for rough road conditions.'],
+['Essential Accessories','Headlight, tail and rear light, reversing light and turn signals; Cabin lights and fog lamps; Speedometer / odometer; Spare wheel with tyre and tube; Front seat belts; Automatic climate control AC; Defroster / Heater; Central locking; Remote keyless entry; Power windows; Audio system; Jack with handle; Dual airbags; ABS; Reverse parking camera; Bedliner & rollbar; Micro hybrid system.'],
+['Instructions','All signs and instructions in the vehicle shall be in English.'],
+['Manuals',"One copy of the Operator's and Owner's Instructions in English shall be supplied."],
+['Tools','A set of tools with a tool bag shall be supplied.'],
+['Color','Standard colour.'],
+['Warranty','Manufacturer shall provide a minimum of one year warranty after acceptance.']]},
+'Jeep (2WD Hardtop)':{title:'Technical Specifications of Two-Wheel Drive Hardtop Jeep',rows:[
+['General','Five door, Right Hand Drive, Two Wheel drive jeep suitable to operate in rough and hilly road condition of Nepal. Gross Vehicle Weight (GVW) shall not be less than 2500 kg and shall have total seating capacity for at least 7 persons including driver.'],
+['Engine','Four stroke, four cylinder, water-cooled diesel engine having engine displacement not less than 2000 cc, developing maximum rated power output not less than 130 bhp and torque not less than 300 Nm at governed RPM.'],
+['Emission Standard','The emission standard of the vehicle shall meet the applicable Nepal Vehicle Mass Emission Standard 2069 certified by Department of Transport Management, Nepal.'],
+['Gauges','To include speedometer, odometer, temperature and fuel gauges etc.'],
+['Transmission','Manual shift at least six forward and one reverse, floor mounted.'],
+['Turning Radius','Not more than 6 m.'],
+['Ground Clearance','Minimum 180 mm.'],
+['Suspension','Double wishbone / telescopic / shock absorber / anti roll bar / stabilizer bar / hydraulic double acting / five link type suspension.'],
+['Tyres','Standard radial size.'],
+['Steering','Power assisted.'],
+['Brakes','Front disc type, rear drum type, hydraulic operated on all wheels and parking brake.'],
+['Body / Cab','Four side doors and one rear door for luggage compartment. All metallic cab with insulated roof, laminated / tinted glass windscreen, front windscreen washers and wipers, comfortable seats, two sun visors, rear view mirror and two side view mirrors.'],
+['Chassis and Frame','Steel, heavy duty suitable for rough road conditions with towing hook.'],
+['Essential Accessories','Head light, tail lamp and rear light, reversing light, turn signals; Cabin lights; Spare wheel with tubeless tyre; Suitable jack with handle; Seat belts for driver and co-passengers; Power windows; Airbag minimum driver & co-passenger; Tilt steering.'],
+['Instructions','All signs and instructions in the vehicle shall be in English.'],
+['Manuals',"One copy of the Operator's and Owner's instructions manual in English shall be supplied."],
+['Tools','A set of tools for general maintenance shall be supplied.'],
+['Color','Standard.'],
+['Manufacture Year','The manufacture year of the vehicle shall be 2025 or later.'],
+['Warranty','Manufacturer shall provide a minimum of one year warranty after acceptance.']]},
+'School Bus':{title:'Technical Specifications of School Bus',rows:[
+['General','Right hand drive vehicle suitable for driving in Nepal at an altitude of 2500 meter and in ambient temperature -5 to 50 degree Celsius. Gross vehicle weight not less than 7000 kg. Wheelbase minimum 4100 mm and seating capacity for at least 36 persons including driver.'],
+['Engine','Maximum rated output power not less than 120 HP at governed RPM and maximum torque not less than 400 Nm at governed RPM.'],
+['Emission Standard','The emission standard of the vehicle must be in compliance with or superior to the applicable Vehicle Mass Emission Standard.'],
+['Gauges','To include water temperature, fuel, oil pressure and transmission gauge.'],
+['Transmission','Manual shift at least five forward and one reverse.'],
+['Suspension','Semi elliptical leaf spring at front and rear.'],
+['Tyres','7.5 X 16-16PR.'],
+['Steering','Power Steering.'],
+['Brakes',"Dual circuit full air S-Cam brake with manufacturer's fitted ABS."],
+['Cab','All metallic / FRP cab, front wipers, glass windows on door, through ventilation and comfortable seats, rear view mirror and two side view mirrors.'],
+['Chassis and Frame','Steel heavy duty suitable for rough road condition with toe hook.'],
+['Essential Accessories','Head light, tail and rear light, reversing light, turn signals; Cabin lights; Speedometer / odometer; Heavy duty front bumper; One spare wheel; Suitable jack and handle; Seat belt for driver.'],
+['Instructions','All signs and instructions in the vehicle shall be in English.'],
+['Manuals',"A copy of the Operator and Owner's instruction and maintenance manual in English shall be supplied."],
+['Tools','A set of tools as required for general maintenance shall be provided.'],
+['Color','Standard colour.'],
+['Warranty','Manufacturer shall provide minimum one year of warranty after acceptance.']]},
+'Backhoe Loader':{title:'Technical Specifications of Backhoe Loader',rows:[
+['General','All wheel drive, rigid frame backhoe loader with steel cab, suitable for operation under rough working conditions and adverse climate condition. Wheelbase should not be less than 2100 mm. Manufactured in the year 2024 or later.'],
+['Capacity','Operating weight not less than 7600 kg.'],
+['Loader','General purpose bucket with (6 in 1) bolt on teeth of SAE rated capacity nominally heaped approx. 1 cu.m with shovel break out force not less than 5250 kgf. Dump Height ≥ 2730 mm; Pin Height ≥ 3400 mm.'],
+['Backhoe','Backhoe bucket with bolt on teeth of SAE rated capacity approx. 0.26 cu.m with tear out force 5600 kgf. Minimum working height ≥ 5600 mm; Minimum digging depth ≥ 4600 mm; Minimum digging reach ≥ 5700 mm.'],
+['Engine','Water cooled diesel engine developing SAE rated gross HP not less than 85 HP with minimum 375 Nm torque with displacement of 3.9 liters at governed RPM.'],
+['Gauges','To include ammeter, water temperature, fuel, oil pressure, transmission and hydraulic gauges.'],
+['Transmission','Torque converter with four speed power shift type.'],
+['Axles','Four wheel drive with fixed rear axle and at least 15° oscillating front axles.'],
+['Tires','Suitable four tires with tubes for operating machine in rough road conditions.'],
+['Steering','Power assisted hydrostatic steering.'],
+['Brakes','Hydraulically actuated, wet multiple disc / caliper disc type service brake and separate parking brake.'],
+['Cab','All steel enclosed cab with laminated glass windscreen, insulated roof, suitably located controls, rear view mirror, cabin light, wiper and adjustable cushioned seat.'],
+['Hydraulics','Suitable hydraulic pumps flow not less than 118 LPM @ 2200 rpm and system pressure Bar 205.'],
+['Essential Accessories','Road lights, work lights and fog lights; Cabin lights; Service hour meter.'],
+['Instructions','All signs and instructions in the equipment shall be in English.'],
+['Manuals',"One copy of the Operator's and Owner's Instructions and Maintenance manual in English. Two copies of following manuals: (a) Spare parts catalogue (b) Comprehensive workshop manual."],
+['Tools','A set of tools as required for general maintenance shall be supplied within a lockable tool box for each unit.'],
+['Color','Orange / Construction equipment yellow.'],
+['Warranty','Manufacturer shall provide a minimum of one year warranty after acceptance.']]},
+'Hydraulic Excavator':{title:'Technical Specification of Hydraulic Excavator',rows:[
+['General','Crawler mounted hydraulic excavator, with heavy duty standard size boom and arm designed specifically for job on rocky, sandy and hilly sites. Suitable for operation under both common and tough / adverse climatic condition at operating altitude up to 3000 m (MSL).'],
+['Engine','Water-cooled, four stroke, diesel engine, developing gross rated maximum power not less than 150 hp at governed rpm. Turbocharged, after cooled engine with piston displacement of not less than 6500 cc.'],
+['Hydraulic System','Hydraulically operated swing system, travel system and work implement systems equipped with suitable capacity and adequate units of hydraulic cylinder, pumps / motors, reservoir, sensors.'],
+['Gauges','Gauges and or meters as necessary for efficient operation, maintenance and safety.'],
+['Under Carriage','Track type undercarriage, heavy duty with track adjustment, sprocket, track rollers and idlers, sealed and lubricated. Track shoe width at least 600 mm with triple grouser type.'],
+['Working Range / Performance','Maximum cutting height not less than 9200 mm; Maximum digging depth not less than 5900 mm; Maximum digging reach (ground level) not less than 9000 mm.'],
+['Swing Speed','Not less than 10 per minute.'],
+['Bucket','Bucket capacity not less than 1 cu.m.'],
+['Operating Weight','At least 20000 kg.'],
+['Cab','The excavator shall be furnished with a cab focused on safety of the operator, ergonomically designed adjustable operator seat.'],
+['Essential Accessories','Service hour meter; Electric windscreen wipers; Heater and defroster; Working lights; Door locks; Travel alarm.'],
+['Instructions','All signs and instructions in the machine shall be in English.'],
+['Manuals',"One copy of the Operator's and Owner's Instructions and Maintenance manual, Spare Parts Catalogue and Comprehensive Workshop Manual in English."],
+['Tools','A set of tools as required for general maintenance shall be supplied within a lockable tool box.'],
+['Warranty','Manufacturer shall provide a minimum of one year warranty after acceptance by the office.']]},
+'Combine Mill':{title:'Technical Specification of Combined Mill',rows:[
+['General','The combine mill is used by small scale farmers and household users for processing paddy to rice. It must also be able to crush various grains to powder form.'],
+['Productivity','The productivity of the combine mill for milling must not be less than 150 kg/hour and for grain grinding must not be less than 130 kg/hour.'],
+['Drive','Electric drive of rated power not less than 2 KW of motor operating in a single phase electric supply of voltage 220 Volt, 50 Hz.'],
+['Instructions','All signs and instructions on the combine mill shall be in English or Nepali.'],
+['Manuals',"One copy of the Operator's instructions manual in English or Nepali shall be supplied to each unit of combine mill."],
+['Warranty','Manufacturer shall provide a minimum of one year warranty and one year free servicing after acceptance.']]},
+'Mini Tiller':{title:'Technical Specification of Mini Tiller',rows:[
+['General','Mini tiller suitable for small scale farmers for land preparation in hill and plain areas.'],
+['Engine','Four stroke, air cooled diesel / petrol engine as specified, developing rated power not less than the specified HP at governed RPM with recoil / electric starting system.'],
+['Transmission','Suitable gear transmission with at least two forward and one reverse speed.'],
+['Tilling Width / Depth','Tilling width not less than 700 mm and tilling depth not less than 150 mm.'],
+['Fuel Tank',"Fuel tank capacity as per manufacturer's standard specification."],
+['Instructions','All signs and instructions on the machine shall be in English or Nepali.'],
+['Manuals',"One copy of the Operator's instructions manual in English or Nepali shall be supplied with each unit."],
+['Warranty','Manufacturer shall provide a minimum of one year warranty after acceptance.']]}
+};
+
+/* ================= SPEC MODULE ================= */
+let specColumns=['Criteria','Requirement'];
+let specRows=[];
+let specView='spec';
+let pmRowIndex=-1;
+let pmTemp={params:[], text:''};
+
+function initSpec(){
+  const sel=$('#specType');
+  sel.innerHTML='<option value="">-- किसिम छान्नुहोस् --</option>'+
+    Object.keys(SPEC_TEMPLATES).map(k=>'<option>'+esc(k)+'</option>').join('');
+  specColumns=['Criteria','Requirement'];
+  specRows=[{cells:['General',''],params:[],reqText:''}];
+  $('#specDelivery').value='Office of the Municipal Executive, Pokhara Metropolitan City';
+  renderSpecRows();specPreviewRender();
+}
+function onSpecTypeChange(){
+  const t=$('#specType').value;
+  if(t&&SPEC_TEMPLATES[t]) $('#specTitle').value=SPEC_TEMPLATES[t].title;
+}
+function loadSpecTemplate(){
+  const t=$('#specType').value;
+  if(!t){alert('कृपया किसिम छान्नुहोस्');return;}
+  const tpl=SPEC_TEMPLATES[t];
+  specColumns=['Criteria','Requirement'];
+  specRows=tpl.rows.map(x=>({cells:[x[0],x[1]],params:[],reqText:''}));
+  $('#specTitle').value=tpl.title;
+  renderSpecRows();specPreviewRender();
+}
+function ensureRowWidth(r){
+  while(r.cells.length<specColumns.length) r.cells.push('');
+  if(r.cells.length>specColumns.length) r.cells.length=specColumns.length;
+  if(!Array.isArray(r.params)) r.params=[];
+  if(typeof r.reqText!=='string') r.reqText='';
+}
+function buildRequirementText(r, ci){
+  const clauses=(r.params||[]).map(p=>{
+    const parts=[];
+    if(p.p) parts.push(p.p);
+    if(p.op) parts.push(p.op);
+    if(p.v) parts.push(p.v);
+    if(p.u) parts.push(p.u);
+    return parts.join(' ').trim();
+  }).filter(Boolean);
+  const paramText=clauses.join(', ');
+  const freeText=(r.reqText||'').trim();
+  if(paramText && freeText) return paramText+'. '+freeText;
+  if(paramText) return paramText;
+  if(freeText) return freeText;
+  return r.cells[ci]||'';
+}
+function renderSpecRows(){
+  specRows.forEach(ensureRowWidth);
+  let h='<thead><tr><th style="width:36px;text-align:center">S.N</th>';
+  specColumns.forEach((c,i)=>{
+    h+='<th><input value="'+esc(c)+'" oninput="specColumns['+i+']=this.value;renderSpecRows();specPreviewRender()" style="font-size:11px;font-weight:600">';
+    if(specColumns.length>1){
+      h+='<button class="mini danger" style="margin-top:3px;width:100%;font-size:10px" onclick="removeSpecColumn('+i+')">यो स्तम्भ हटाउने</button>';
+    }
+    h+='</th>';
+  });
+  h+='<th style="width:46px"></th></tr></thead><tbody>';
+  specRows.forEach((r,ri)=>{
+    h+='<tr><td style="text-align:center;vertical-align:middle">'+(ri+1)+'</td>';
+    specColumns.forEach((c,ci)=>{
+      if(ci===1 && specColumns.length>=2){
+        const paramCount=(r.params||[]).length;
+        h+='<td>'+
+          '<textarea rows="3" oninput="specRows['+ri+'].reqText=this.value;specPreviewRender()" placeholder="Free text (थप विवरण)">'+esc(r.reqText||'')+'</textarea>'+
+          (paramCount?'<div style="margin-top:4px;font-size:11px;color:#0b4a34;background:#e8f3ec;padding:3px 6px;border-radius:4px"><b>'+ne(paramCount)+'</b> parameter clause(s) merged</div>':'')+
+          '<div class="hint" style="margin-top:3px">🔧 बटनले ड्रपडाउन + टेक्स्ट बक्सबाट मापदण्ड बनाउनुहोस्</div>'+
+        '</td>';
+      } else {
+        h+='<td><textarea rows="3" oninput="specRows['+ri+'].cells['+ci+']=this.value;specPreviewRender()">'+esc(r.cells[ci]||'')+'</textarea></td>';
+      }
+    });
+    h+='<td style="text-align:center;vertical-align:middle">'+
+       '<button class="mini" title="मापदण्ड निर्माण" onclick="openParamModal('+ri+')">🔧</button><br>'+
+       '<button class="mini danger" style="margin-top:3px" onclick="removeSpecRow('+ri+')">×</button></td></tr>';
+  });
+  h+='</tbody>';
+  $('#specRowsTable').innerHTML=h;
+}
+function removeSpecColumn(i){
+  if(specColumns.length<=1) return;
+  specColumns.splice(i,1);
+  specRows.forEach(r=>{r.cells.splice(i,1);});
+  renderSpecRows();specPreviewRender();
+}
+function addSpecColumn(){
+  specColumns.push('Column '+(specColumns.length+1));
+  specRows.forEach(r=>r.cells.push(''));
+  renderSpecRows();specPreviewRender();
+}
+function removeSpecRow(i){specRows.splice(i,1);renderSpecRows();specPreviewRender();}
+function addSpecRow(){specRows.push({cells:specColumns.map(()=>''),params:[],reqText:''});renderSpecRows();specPreviewRender();}
+function clearSpecPaste(){$('#specPaste').value='';}
+function parseSpecPaste(){
+  const txt=$('#specPaste').value.trim();
+  if(!txt)return alert('पेस्ट गर्नुहोस्');
+  const parsed=[];let maxCols=specColumns.length;
+  txt.split(/\r?\n/).forEach(l=>{
+    if(!l.trim())return;
+    let c=l.split('\t').map(x=>x.trim());
+    if(!c.length)return;
+    if(/^(s\.?\s*n\.?|क्र\.?सं\.?|sn)$/i.test(c[0])) return;
+    if(/^\d+$/.test(c[0]) && c.length>1) c=c.slice(1);
+    if(!c.length)return;
+    const merged=[];let cur='';
+    for(let i=0;i<c.length;i++){
+      if(c[i]==='' && cur!==''){merged.push(cur);cur='';}
+      else if(c[i]!==''){
+        if(cur!==''){merged.push(cur);}
+        cur=c[i];
+      }
+    }
+    if(cur!=='') merged.push(cur);
+    parsed.push(merged.length?merged:c);
+    if(merged.length>maxCols) maxCols=merged.length;
+  });
+  if(!parsed.length)return alert('पार्स गर्न सकिएन।');
+  while(specColumns.length<maxCols){specColumns.push('Column '+(specColumns.length+1));}
+  specRows=parsed.map(c=>{
+    const cells=c.slice();
+    while(cells.length<specColumns.length) cells.push('');
+    return {cells,params:[],reqText:''};
+  });
+  renderSpecRows();specPreviewRender();
+}
+function specShow(v){
+  specView=v;
+  $$('#specTabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  $('#specPreview').classList.toggle('hidden',v!=='spec');
+  $('#specEstPreview').classList.toggle('hidden',v!=='est');
+}
+function specPreviewRender(){
+  const title=$('#specTitle').value||'Technical Specification';
+  const make=$('#specMake').value.trim(),model=$('#specModel').value.trim(),country=$('#specCountry').value.trim();
+  const headerMode=$('#specHeaderMode').value;
+
+  let h=headerHTML(headerMode,'en');
+  h+='<div class="doc">';
+  h+='<h2>'+esc(title)+'</h2>';
+  const meta=[];
+  if(make) meta.push('<b>Make:</b> '+esc(make));
+  if(model) meta.push('<b>Model:</b> '+esc(model));
+  if(country) meta.push('<b>Country of Origin:</b> '+esc(country));
+  if(meta.length) h+='<p class="small" style="margin:2px 0 8px">'+meta.join(' &nbsp;&nbsp; ')+'</p>';
+  h+='<table class="spec"><thead><tr><th style="width:6%">S.N.</th>';
+  specColumns.forEach(c=>h+='<th>'+esc(c)+'</th>');
+  h+='</tr></thead><tbody>';
+  specRows.forEach((r,i)=>{
+    h+='<tr><td style="text-align:center">'+(i+1)+'</td>';
+    specColumns.forEach((c,ci)=>{
+      const val=(ci===1 && specColumns.length>=2) ? buildRequirementText(r,ci) : (r.cells[ci]||'');
+      h+='<td>'+esc(val).replace(/\n/g,'<br>')+'</td>';
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div class="sign">'+
+     '<div><b>Prepared By</b><br><br>'+esc(S.prepName)+'<br>'+esc(S.prepDesig)+'<br>'+esc(S.nec)+'</div>'+
+     '<div><b>Approved By</b><br><br>'+esc(S.appName||'..........................')+'<br>&nbsp;</div>'+
+     '</div>';
+  h+=footerHTML();
+  h+='</div>';
+  $('#specPreview').innerHTML=h;
+
+  const q=num($('#specQty').value)||1,rate=num($('#specRate').value),unit=$('#specUnit').value||'Nos.';
+  const vatOn=$('#specVatOn').checked,vatRate=num($('#specVatRate').value);
+  const remarks=$('#specRemarks').value,deliver=$('#specDelivery').value;
+  const amount=q*rate,vat=vatOn?amount*vatRate/100:0,total=amount+vat;
+
+  let e=headerHTML(headerMode,'en');
+  e+='<div class="doc">';
+  e+='<h2>Cost Estimate</h2>';
+  e+='<p class="small" style="text-align:center;margin:0 0 8px">'+esc(title)+'</p>';
+  e+='<table class="spec"><tr><th style="width:6%">S.N.</th><th>Particulars</th><th style="width:9%">Qty</th><th style="width:10%">Unit</th><th style="width:13%">Rate (NRs.)</th><th style="width:14%">Amount (NRs.)</th><th style="width:18%">Remarks</th></tr>';
+  e+='<tr><td style="text-align:center">1</td><td>'+esc(title)+'</td><td style="text-align:center">'+q+'</td><td style="text-align:center">'+esc(unit)+'</td><td style="text-align:right">'+fmt(rate)+'</td><td style="text-align:right">'+fmt(amount)+'</td><td>'+esc(remarks)+'</td></tr>';
+  if(vatOn) e+='<tr><td colspan="5" style="text-align:right">VAT @ '+vatRate+'%</td><td style="text-align:right">'+fmt(vat)+'</td><td></td></tr>';
+  e+='<tr><td colspan="5" style="text-align:right;font-weight:700">Grand Total</td><td style="text-align:right;font-weight:700">'+fmt(total)+'</td><td>'+(vatOn?'VAT Inclusive':'VAT Not Applicable')+'</td></tr>';
+  e+='</table>';
+  e+='<p class="small" style="margin-top:4px"><b>In words:</b> '+amountWords(total)+'</p>';
+  if(remarks) e+='<p class="small">'+esc(remarks)+'</p>';
+  if(deliver) e+='<p class="small"><b>Delivery:</b> '+esc(deliver)+'</p>';
+  e+='<div class="sign">'+
+     '<div><b>Prepared By</b><br><br>'+esc(S.prepName)+'<br>'+esc(S.prepDesig)+'<br>'+esc(S.nec)+'</div>'+
+     '<div><b>Approved By</b><br><br>'+esc(S.appName||'..........................')+'<br>&nbsp;</div>'+
+     '</div>';
+  e+=footerHTML();
+  e+='</div>';
+  $('#specEstPreview').innerHTML=e;
+}
+
+/* ---------- Parameter builder modal ---------- */
+const PARAM_OPTIONS=['Engine Displacement','Max Power','Max Torque','Ground Clearance','Turning Radius',
+ 'GVW','Seating Capacity','Wheelbase','Overall Length','Overall Width','Overall Height',
+ 'Fuel Tank Capacity','Bucket Capacity','Operating Weight','Digging Depth','Digging Reach',
+ 'Dump Height','Track Shoe Width','Cylinder','Horsepower','Rated RPM','Tilling Width',
+ 'Tilling Depth','Productivity','Rated Power','Displacement','Emission Standard','Track Width',
+ 'Swept Volume','Payload','Kerb Weight','Brake Type','Suspension Type','Tyre Size','Steering Type',
+ 'Transmission Type','Custom'];
+const OPERATOR_OPTIONS=['not less than','not more than','equal to','minimum','maximum','at least','at most','approximately'];
+
+function openParamModal(ri){
+  pmRowIndex=ri;
+  const r=specRows[ri];
+  pmTemp={
+    params:JSON.parse(JSON.stringify(r.params||[])),
+    text:r.reqText||''
+  };
+  $('#pm_criteria').value=r.cells[0]||'';
+  $('#pm_text').value=pmTemp.text;
+  pmRender();
+  $('#paramModal').classList.add('on');
+}
+function pmClose(){$('#paramModal').classList.remove('on');}
+function pmRender(){
+  $('#pm_params').innerHTML=pmTemp.params.map((p,i)=>{
+    const paramOpts=PARAM_OPTIONS.map(o=>'<option'+(p.p===o?' selected':'')+'>'+esc(o)+'</option>').join('');
+    const opOpts=OPERATOR_OPTIONS.map(o=>'<option'+(p.op===o?' selected':'')+'>'+esc(o)+'</option>').join('');
+    return '<div class="param-row">'+
+      '<select onchange="pmTemp.params['+i+'].p=this.value;pmRender()">'+paramOpts+'</select>'+
+      '<select onchange="pmTemp.params['+i+'].op=this.value;pmRender()">'+opOpts+'</select>'+
+      '<input value="'+esc(p.v||'')+'" placeholder="मान" oninput="pmTemp.params['+i+'].v=this.value">'+
+      '<input value="'+esc(p.u||'')+'" placeholder="एकाइ" oninput="pmTemp.params['+i+'].u=this.value">'+
+      '<button class="mini danger" onclick="pmRemoveParam('+i+')">×</button>'+
+    '</div>';
+  }).join('')||'<div class="hint">कुनै मापदण्ड थपिएको छैन।</div>';
+}
+function pmAddParam(){
+  pmTemp.params.push({p:'Engine Displacement',op:'not less than',v:'',u:'cc'});
+  pmRender();
+}
+function pmRemoveParam(i){pmTemp.params.splice(i,1);pmRender();}
+function pmSave(){
+  if(pmRowIndex<0){pmClose();return;}
+  specRows[pmRowIndex].params=pmTemp.params;
+  specRows[pmRowIndex].reqText=$('#pm_text').value;
+  pmClose();
+  renderSpecRows();specPreviewRender();
+}
+
+/* ================= INSPECTION MODULE ================= */
+let insp={
+  details:[
+    ['Name of Office / School',''],['Name of Supplier',''],['Vehicle / Machine Color',''],
+    ['Engine Number',''],['Chassis Number',''],['Make and Model',''],['Manufacture Year','']
+  ],
+  specRows:[],
+  funcRows:[
+    {c:'Headlights',s:'Working'},{c:'Brake System',s:'Working'},{c:'Horn',s:'Working'},
+    {c:'Windshield Wipers',s:'Working'},{c:'Indicator Lights',s:'Working'}
+  ],
+  photos:[]
+};
+const FUNC_STATUS_OPTIONS=['Working','Not Working','Partially Working','Not Applicable'];
+
+function initInsp(){
+  $('#i_prep').value=S.prepName;
+  $('#i_app').value=S.appName;
+  renderInspDetails();renderInspSpec();renderInspFunc();renderInspPhotos();inspPreview();
+}
+function renderInspDetails(){
+  $('#i_details').innerHTML=insp.details.map((d,i)=>
+    '<tr><td style="width:45%"><input value="'+esc(d[0])+'" oninput="insp.details['+i+'][0]=this.value;inspPreview()"></td>'+
+    '<td><input value="'+esc(d[1])+'" oninput="insp.details['+i+'][1]=this.value;inspPreview()"></td>'+
+    '<td style="width:30px"><button class="mini danger" onclick="insp.details.splice('+i+',1);renderInspDetails();inspPreview()">×</button></td></tr>').join('');
+}
+function inspAddDetail(){insp.details.push(['','']);renderInspDetails();}
+function renderInspSpec(){
+  $('#i_spec').innerHTML='<tr><th style="width:5%">S.N</th><th style="width:18%">Criteria</th><th>Requirement</th><th style="width:14%">Status</th><th style="width:20%">Remarks</th><th style="width:30px"></th></tr>'+
+   insp.specRows.map((r,i)=>'<tr>'+
+     '<td><input style="width:38px" value="'+esc(r.sn)+'" oninput="insp.specRows['+i+'].sn=this.value;inspPreview()"></td>'+
+     '<td><input value="'+esc(r.criteria)+'" oninput="insp.specRows['+i+'].criteria=this.value;inspPreview()"></td>'+
+     '<td><textarea rows="2" oninput="insp.specRows['+i+'].requirement=this.value;inspPreview()">'+esc(r.requirement)+'</textarea></td>'+
+     '<td><select onchange="insp.specRows['+i+'].status=this.value;inspPreview()">'+
+        ['Comply','Not Comply','Partially Comply'].map(o=>'<option'+(r.status===o?' selected':'')+'>'+o+'</option>').join('')+
+     '</select></td>'+
+     '<td><textarea rows="2" placeholder="Remarks यहाँ लेख्नुहोस्" oninput="insp.specRows['+i+'].remark=this.value;inspPreview()">'+esc(r.remark||'')+'</textarea></td>'+
+     '<td><button class="mini danger" onclick="insp.specRows.splice('+i+',1);renderInspSpec();inspPreview()">×</button></td>'+
+   '</tr>').join('');
+}
+function inspParse(){
+  const txt=$('#i_paste').value.trim();
+  if(!txt)return alert('पेस्ट गर्नुहोस्');
+  const out=[];
+  txt.split(/\r?\n/).forEach(l=>{
+    if(!l.trim())return;
+    const c=l.split('\t').map(x=>x.trim());
+    if(c.length<2)return;
+    if(/^(s\.?\s*n\.?|क्र\.?सं\.?|sn)$/i.test(c[0]))return;
+    let sn, crit, req;
+    if(/^\d+$/.test(c[0])){
+      sn=c[0]; crit=c[1]; req=c.slice(2).join(' ')||'';
+    } else {
+      sn=String(out.length+1); crit=c[0]; req=c.slice(1).join(' ')||'';
+    }
+    out.push({sn, criteria:crit, requirement:req, status:'Comply', remark:''});
+  });
+  if(!out.length)return alert('पार्स गर्न सकिएन।');
+  insp.specRows=out;renderInspSpec();inspPreview();
+}
+function inspClearSpec(){insp.specRows=[];renderInspSpec();inspPreview();}
+function renderInspFunc(){
+  $('#i_func').innerHTML=insp.funcRows.map((r,i)=>
+   '<tr><td style="width:60%"><input value="'+esc(r.c)+'" oninput="insp.funcRows['+i+'].c=this.value;inspPreview()"></td>'+
+   '<td><select onchange="insp.funcRows['+i+'].s=this.value;inspPreview()">'+
+     FUNC_STATUS_OPTIONS.map(s=>'<option'+(r.s===s?' selected':'')+'>'+esc(s)+'</option>').join('')+
+   '</select></td>'+
+   '<td style="width:30px"><button class="mini danger" onclick="insp.funcRows.splice('+i+',1);renderInspFunc();inspPreview()">×</button></td></tr>').join('');
+}
+function inspAddFunc(){insp.funcRows.push({c:'',s:'Working'});renderInspFunc();}
+function inspAddPhotos(e){
+  const files=Array.from(e.target.files);let left=files.length;
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=ev=>{insp.photos.push({src:ev.target.result,caption:''});if(--left===0){renderInspPhotos();inspPreview();}};
+    r.readAsDataURL(f);
+  });
+  e.target.value='';
+}
+function renderInspPhotos(){
+  $('#i_photoList').innerHTML=insp.photos.map((p,i)=>
+   '<div class="thumb"><img src="'+p.src+'">'+
+   '<input placeholder="Caption" value="'+esc(p.caption)+'" oninput="insp.photos['+i+'].caption=this.value;inspPreview()" style="margin-top:4px">'+
+   '<button class="mini danger" style="margin-top:3px;width:100%" onclick="insp.photos.splice('+i+',1);renderInspPhotos();inspPreview()">हटाउने</button></div>').join('');
+}
+function inspPreview(){
+  const title=$('#i_title').value,sub=$('#i_subtitle').value;
+  const conc=$('#i_conclusion').value,prep=$('#i_prep').value,app=$('#i_app').value,dt=$('#i_date').value;
+  const headerMode=$('#i_headerMode').value;
+  let h=headerHTML(headerMode,'en');
+  h+='<div class="doc">';
+  if(sub) h+='<div class="center small" style="margin-bottom:6px">'+esc(sub).replace(/\n/g,'<br>')+'</div>';
+  h+='<h2>'+esc(title)+'</h2>';
+  h+='<h3>1. Vehicle / Machine Details</h3>';
+  h+='<table class="spec"><tr><th style="width:35%">Particulars</th><th>Details</th></tr>';
+  insp.details.forEach(d=>{h+='<tr><td>'+esc(d[0])+'</td><td>'+esc(d[1])+'</td></tr>';});
+  h+='</table>';
+  if(insp.specRows.length){
+    h+='<h3>2. Specification Compliance</h3>';
+    h+='<table class="spec"><tr><th style="width:5%">S.N.</th><th style="width:18%">Particulars</th><th>Requirements as per Specification</th><th style="width:14%">Compliance</th><th style="width:20%">Remarks</th></tr>';
+    insp.specRows.forEach((r,i)=>{
+      h+='<tr><td style="text-align:center">'+esc(r.sn||(i+1))+'</td><td>'+esc(r.criteria)+'</td><td>'+esc(r.requirement)+'</td><td style="text-align:center">'+esc(r.status)+'</td><td>'+esc(r.remark||'')+'</td></tr>';
+    });
+    h+='</table>';
+  }
+  if(insp.funcRows.length){
+    h+='<h3>3. Functional Check</h3>';
+    h+='<table class="spec"><tr><th style="width:8%">S.N.</th><th>Component Checked</th><th style="width:30%">Status</th></tr>';
+    insp.funcRows.forEach((r,i)=>{h+='<tr><td style="text-align:center">'+(i+1)+'</td><td>'+esc(r.c)+'</td><td>'+esc(r.s)+'</td></tr>';});
+    h+='</table>';
+  }
+  if(insp.photos.length){
+    h+='<h3>4. Photographs</h3><div class="photo-grid">';
+    insp.photos.forEach(p=>{h+='<figure><img src="'+p.src+'"><figcaption>'+esc(p.caption||'')+'</figcaption></figure>';});
+    h+='</div>';
+  }
+  h+='<h3>'+(insp.photos.length?'5':'4')+'. Conclusion</h3>';
+  h+='<p style="text-align:justify">'+esc(conc).replace(/\n/g,'<br>')+'</p>';
+  h+='<div class="sign">'+
+     '<div><b>Prepared By</b><br><br>'+esc(prep||'..........................')+'<br>'+esc(S.prepDesig)+'<br>'+(dt?('Date: '+esc(dt)):'')+'</div>'+
+     '<div><b>Approved By</b><br><br>'+esc(app||'..........................')+'<br>&nbsp;</div>'+
+     '</div>';
+  h+=footerHTML();
+  h+='</div>';
+  $('#i_preview').innerHTML=h;
+}
+
+/* ================= ESTIMATE MODULE ================= */
+let estRows=[];
+function initEst(){
+  estRows=[{desc:'',unit:'Nos.',qty:1,rate:0,amount:0}];
+  $('#e_parentOffice').value='';
+  $('#e_office').value=S.org4||'';
+  $('#e_location').value=S.org1||'';
+  renderEstRows();estPreview();
+}
+function renderEstRows(){
+  const header='<tr><th style="width:6%">S.N</th><th>विवरण</th><th style="width:11%">एकाइ</th><th style="width:9%">परिमाण</th><th style="width:14%">दर</th><th style="width:16%">रकम</th><th style="width:30px"></th></tr>';
+  $('#e_rows').innerHTML=header+estRows.map((r,i)=>'<tr>'+
+    '<td style="text-align:center">'+(i+1)+'</td>'+
+    '<td><input value="'+esc(r.desc)+'" oninput="estRows['+i+'].desc=this.value;estPreview()"></td>'+
+    '<td><input value="'+esc(r.unit)+'" oninput="estRows['+i+'].unit=this.value;estPreview()"></td>'+
+    '<td><input type="number" value="'+esc(r.qty)+'" oninput="estQtyChange('+i+',this)"></td>'+
+    '<td><input type="number" value="'+esc(r.rate)+'" oninput="estRateChange('+i+',this)"></td>'+
+    '<td><input type="number" class="amount-inp" value="'+esc(r.amount)+'" oninput="estAmountChange('+i+',this)"></td>'+
+    '<td style="text-align:center"><button class="mini danger" onclick="estRows.splice('+i+',1);renderEstRows();estPreview()">×</button></td>'+
+  '</tr>').join('');
+}
+function estQtyChange(i,el){
+  estRows[i].qty=el.value;
+  estRows[i].amount=num(el.value)*num(estRows[i].rate);
+  const tr=el.closest('tr');if(tr) tr.querySelector('.amount-inp').value=estRows[i].amount;
+  estPreview();
+}
+function estRateChange(i,el){
+  estRows[i].rate=el.value;
+  estRows[i].amount=num(estRows[i].qty)*num(el.value);
+  const tr=el.closest('tr');if(tr) tr.querySelector('.amount-inp').value=estRows[i].amount;
+  estPreview();
+}
+function estAmountChange(i,el){estRows[i].amount=num(el.value);estPreview();}
+function estAddRow(){estRows.push({desc:'',unit:'Nos.',qty:1,rate:0,amount:0});renderEstRows();estPreview();}
+function estClearRows(){
+  if(!confirm('सबै पङ्क्ति खाली गर्ने हो?')) return;
+  estRows=[{desc:'',unit:'Nos.',qty:1,rate:0,amount:0}];
+  $('#e_paste').value='';
+  renderEstRows();estPreview();
+}
+function estParse(){
+  const txt=$('#e_paste').value.trim();
+  if(!txt)return alert('पेस्ट गर्नुहोस्');
+  const out=[];
+  txt.split(/\r?\n/).forEach(l=>{
+    if(!l.trim())return;
+    const c=l.split('\t').map(x=>x.trim());
+    if(c.length<2)return;
+    if(/^(s\.?\s*n\.?|क्र\.?सं\.?|sn)$/i.test(c[0]) && /desc|particular|विवरण|item|वस्तु/i.test(c[1]||'')) return;
+    let desc='',unit='Nos.',qty=1,rate=0,amount=null;
+    let cells=c.slice();
+    if(/^\d+$/.test(cells[0]) && cells.length>2){ cells=cells.slice(1); }
+    if(cells.length>=5){
+      desc=cells[0]; unit=cells[1]||'Nos.';
+      qty=num(cells[2]); rate=num(cells[3]); amount=num(cells[4]);
+    } else if(cells.length===4){
+      const c2=cells[2], c3=cells[3];
+      if(isNaN(parseFloat(String(cells[1]))) && !isNaN(parseFloat(String(c2)))){
+        desc=cells[0]; unit=cells[1]||'Nos.'; qty=num(c2); rate=num(c3);
+      } else {
+        desc=cells[0]; qty=num(cells[1]); rate=num(c2); amount=num(c3);
+      }
+    } else if(cells.length===3){
+      desc=cells[0];
+      if(isNaN(parseFloat(String(cells[1])))){ unit=cells[1]; rate=num(cells[2]); }
+      else { qty=num(cells[1]); rate=num(cells[2]); }
+    } else { desc=cells[0]; rate=num(cells[1]); }
+    if(!desc) return;
+    if(amount==null||isNaN(amount)||(amount===0 && (qty*rate)>0)) amount=qty*rate;
+    out.push({desc,unit,qty,rate,amount});
+  });
+  if(!out.length)return alert('पार्स गर्न सकिएन।');
+  estRows=out;renderEstRows();estPreview();
+}
+function estOfficeBlockHTML(){
+  const parent=$('#e_parentOffice').value.trim();
+  const office=$('#e_office').value.trim();
+  const loc=$('#e_location').value.trim();
+  if(!office && !parent && !loc) return '';
+  let h='<div class="office-title">';
+  if(parent) h+='<div class="parent">'+esc(parent)+'</div>';
+  if(office) h+='<div class="child">'+esc(office)+'</div>';
+  if(loc) h+='<div class="loc">'+esc(loc)+'</div>';
+  h+='</div>';
+  return h;
+}
+function estPreview(){
+  const title=$('#e_title').value,no=$('#e_no').value,dt=$('#e_date').value;
+  const contP=num($('#e_cont').value),vatP=num($('#e_vat').value),vatOn=$('#e_vatOn').value==='yes';
+  const remarks=$('#e_remarks').value;
+  const vehType=$('#e_vehType').value.trim(),vehMake=$('#e_vehMake').value.trim(),vehYear=$('#e_vehYear').value.trim();
+  const headerMode=$('#e_headerMode').value;
+
+  let sub2=0;
+  estRows.forEach(r=>sub2+=num(r.amount));
+  const cont=sub2*contP/100;
+  const base=sub2+cont;
+  const vat=vatOn?base*vatP/100:0;
+  const total=base+vat;
+
+  let h=headerHTML(headerMode,'en');
+  h+='<div class="doc">';
+  h+=estOfficeBlockHTML();
+  h+='<h2>'+esc(title)+'</h2>';
+
+  const hasVehType=!!vehType;
+  const hasVehMake=!!vehMake;
+  const hasVehYear=!!vehYear;
+  if(hasVehType||hasVehMake||hasVehYear){
+    const colCount=[hasVehType,hasVehMake,hasVehYear].filter(Boolean).length;
+    const pct=(100/colCount).toFixed(2);
+    h+='<table class="spec" style="margin-bottom:6px"><tr>';
+    if(hasVehType) h+='<th style="width:'+pct+'%">Vehicle Type</th>';
+    if(hasVehMake) h+='<th style="width:'+pct+'%">Make / Model</th>';
+    if(hasVehYear) h+='<th style="width:'+pct+'%">Manufacture Year</th>';
+    h+='</tr><tr>';
+    if(hasVehType) h+='<td style="text-align:center">'+esc(vehType)+'</td>';
+    if(hasVehMake) h+='<td style="text-align:center">'+esc(vehMake)+'</td>';
+    if(hasVehYear) h+='<td style="text-align:center">'+esc(vehYear)+'</td>';
+    h+='</tr></table>';
+  }
+
+  h+='<table class="plain" style="margin-bottom:6px"><tr><td style="width:60%">'+(no?'Estimate No.: '+esc(no):'')+'</td><td style="text-align:right">'+(dt?'Date: '+esc(dt):'')+'</td></tr></table>';
+  h+='<table class="spec"><tr><th style="width:6%">S.N.</th><th>Description</th><th style="width:10%">Unit</th><th style="width:10%">Qty</th><th style="width:14%">Rate (NRs.)</th><th style="width:16%">Amount (NRs.)</th></tr>';
+  estRows.forEach((r,i)=>{
+    h+='<tr><td style="text-align:center">'+(i+1)+'</td><td>'+esc(r.desc)+'</td><td style="text-align:center">'+esc(r.unit)+'</td><td style="text-align:center">'+esc(r.qty)+'</td><td style="text-align:right">'+fmt(r.rate)+'</td><td style="text-align:right">'+fmt(num(r.amount))+'</td></tr>';
+  });
+  h+='<tr><td colspan="5" style="text-align:right;font-weight:700">Sub Total</td><td style="text-align:right">'+fmt(sub2)+'</td></tr>';
+  if(contP) h+='<tr><td colspan="5" style="text-align:right">Contingency @ '+contP+'%</td><td style="text-align:right">'+fmt(cont)+'</td></tr>';
+  if(vatOn) h+='<tr><td colspan="5" style="text-align:right">VAT @ '+vatP+'%</td><td style="text-align:right">'+fmt(vat)+'</td></tr>';
+  h+='<tr><td colspan="5" style="text-align:right;font-weight:700">Grand Total</td><td style="text-align:right;font-weight:700">'+fmt(total)+'</td></tr>';
+  h+='</table>';
+  h+='<p class="small" style="margin-top:5px"><b>In words:</b> '+amountWords(total)+'</p>';
+  if(remarks) h+='<p class="small">'+esc(remarks)+'</p>';
+  h+='<div class="sign">'+
+     '<div><b>Prepared By</b><br><br>'+esc(S.prepName)+'<br>'+esc(S.prepDesig)+'<br>'+esc(S.nec)+'</div>'+
+     '<div><b>Approved By</b><br><br>'+esc(S.appName||'..........................')+'<br>&nbsp;</div>'+
+     '</div>';
+  h+=footerHTML();
+  h+='</div>';
+  $('#e_preview').innerHTML=h;
+}
+
+/* ================= LETTER MODULE ================= */
+let letterAtts=['बी.ओ.क्यू.','लागत अनुमान','प्राविधिक स्पेसिफिकेसन'];
+const LETTER_TPL={
+ specsent:{subject:'प्राविधिक स्पेसिफिकेसन पेश गरिएको सम्बन्धमा।',
+  body:'प्रस्तुत विषयमा, तपाईंको कार्यालयको आवश्यकताका आधारमा तयार गरिएको प्राविधिक स्पेसिफिकेसन यसै पत्रसाथ संलग्न गरी पेश गरेको छु। सो स्पेसिफिकेसन अनुसार आवश्यक कारबाही गरिदिनुहुन अनुरोध गर्दछु।',
+  atts:['प्राविधिक स्पेसिफिकेसन','लागत अनुमान']},
+ boq:{subject:'बी.ओ.क्यू., लागत अनुमान तथा प्राविधिक स्पेसिफिकेसन पेश गरिएको सम्बन्धमा।',
+  body:'प्रस्तुत विषयमा, आर्थिक वर्ष २०८३/८४ का लागि खरिद गर्नुपर्ने सामानको तयार गरिएको बी.ओ.क्यू., लागत अनुमान तथा प्राविधिक स्पेसिफिकेसन यसै पत्रसाथ संलग्न गरी पेश गरेको छु। आवश्यक कारबाहीका लागि अनुरोध गर्दछु।',
+  atts:['बी.ओ.क्यू.','लागत अनुमान','प्राविधिक स्पेसिफिकेसन']},
+ pay:{subject:'भुक्तानी पाउँ भन्ने सम्बन्धमा।',
+  body:'प्रस्तुत विषयमा, मैले सम्पन्न गरेको कार्यको भ्रमण आदेश तथा भ्रमण बिल यसै निवेदनसाथ संलग्न गरी पेश गरेको छु। पेश भएको बिल बमोजिमको रकम तपशिलमा उल्लेखित बैंक खातामा भुक्तानी गराइदिनुहुन अनुरोध गर्दछु।',
+  atts:['भ्रमण आदेश','भ्रमण बिल','भ्रमण प्रतिवेदन']},
+ report:{subject:'भ्रमण प्रतिवेदन पेश गरिएको सम्बन्धमा।',
+  body:'प्रस्तुत विषयमा, मैले मिति ......... देखि ......... सम्म सम्पन्न गरेको भ्रमणको प्रतिवेदन यसै पत्रसाथ संलग्न गरी पेश गरेको छु। आवश्यक कारबाहीका लागि अनुरोध गर्दछु।',
+  atts:['भ्रमण प्रतिवेदन','भ्रमण बिल']},
+ inspection:{subject:'निरीक्षण प्रतिवेदन पेश गरिएको सम्बन्धमा।',
+  body:'प्रस्तुत विषयमा, आपूर्ति भएको सवारीको स्वीकृत स्पेसिफिकेसन अनुसार निरीक्षण गरी तयार गरिएको निरीक्षण प्रतिवेदन यसै पत्रसाथ संलग्न गरी पेश गरेको छु। आवश्यक कारबाहीका लागि अनुरोध गर्दछु।',
+  atts:['निरीक्षण प्रतिवेदन','स्पेसिफिकेसन','फोटोग्राफ']}
+};
+function initLetter(){
+  $('#l_date').value='';
+  $('#l_signName').value=S.prepName;
+  $('#l_signDesig').value=S.prepDesig;
+  $('#l_signOffice').value=S.org4+', '+S.org1;
+  if(!$('#l_to').value.trim()) letterFillTarget();
+  renderLetterAtts();letterPreview();
+}
+function letterFillTarget(){
+  if(!S.tgtNameNe && !S.tgtNameEn){
+    alert('सेटिङमा गन्तव्य कार्यालय भरिएको छैन।');
+    return;
+  }
+  const lines=[];
+  if(S.tgtNameNe) lines.push(S.tgtNameNe);
+  if(S.tgtAddrNe) lines.push(S.tgtAddrNe);
+  $('#l_to').value=lines.join('\n');
+  letterPreview();
+}
+function letterApplyTemplate(){
+  const k=$('#l_tpl').value;if(!k)return;
+  const t=LETTER_TPL[k];
+  $('#l_subject').value=t.subject;
+  $('#l_body').value=t.body;
+  letterAtts=t.atts.slice();
+  renderLetterAtts();letterPreview();
+}
+function renderLetterAtts(){
+  $('#l_attList').innerHTML=letterAtts.map((a,i)=>
+   '<div class="flexrow" style="margin-bottom:4px"><input value="'+esc(a)+'" oninput="letterAtts['+i+']=this.value;letterPreview()">'+
+   '<button class="mini danger" onclick="letterAtts.splice('+i+',1);renderLetterAtts();letterPreview()">×</button></div>').join('');
+}
+function letterAddAtt(){letterAtts.push('');renderLetterAtts();letterPreview();}
+function letterPreview(){
+  const no=$('#l_no').value,chal=$('#l_chalani').value,dt=$('#l_date').value;
+  const to=$('#l_to').value,subj=$('#l_subject').value,body=$('#l_body').value;
+  const name=$('#l_signName').value,desig=$('#l_signDesig').value,off=$('#l_signOffice').value;
+  let h='';
+  if($('#l_letterhead').checked) h+=letterheadHTML('ne');
+  h+='<div class="doc">';
+  if($('#l_contact').checked){
+    h+='<table class="plain"><tr><td style="font-size:10pt">पत्र संख्या: '+esc(no)+'</td>'+
+       '<td style="text-align:right;font-size:9pt">वेबसाइट: '+esc(S.website)+' | इमेल: '+esc(S.email)+' | फोन: '+esc(S.phone)+'</td></tr>'+
+       '<tr><td style="font-size:10pt">चलानी नं.: '+esc(chal)+'</td><td style="text-align:right;font-size:10pt">मिति: '+esc(dt)+'</td></tr></table>';
+  }else{
+    h+='<table class="plain"><tr><td style="font-size:10pt">पत्र संख्या: '+esc(no)+'</td><td style="text-align:right;font-size:10pt">मिति: '+esc(dt)+'</td></tr>'+
+       '<tr><td style="font-size:10pt">चलानी नं.: '+esc(chal)+'</td><td></td></tr></table>';
+  }
+  h+='<div style="margin-top:14px;font-size:11pt">'+esc(to).replace(/\n/g,'<br>')+'</div>';
+  h+='<div class="center" style="margin:12px 0 10px"><b>विषयः '+esc(subj)+'</b></div>';
+  h+='<div style="font-size:11pt"><b>महोदय,</b></div>';
+  h+='<div style="text-align:justify;font-size:11pt;margin-top:6px">'+esc(body).replace(/\n/g,'<br>')+'</div>';
+  if(letterAtts.filter(x=>x.trim()).length){
+    h+='<div style="margin-top:12px;font-size:11pt"><b>संलग्न कागजातहरूः</b><ol style="margin:4px 0 0 20px">';
+    letterAtts.filter(x=>x.trim()).forEach(a=>{h+='<li>'+esc(a)+'</li>';});
+    h+='</ol></div>';
+  }
+  h+='<div class="sign"><div></div><div><b>भवदीय,</b><br><br><br>..........................<br>'+esc(name)+'<br>'+esc(desig)+'<br>'+esc(off)+'</div></div>';
+  h+=footerHTML();
+  h+='</div>';
+  $('#l_preview').innerHTML=h;
+}
+
+/* ================= TO / BILL / REPORT / PAYMENT ================= */
+let toView='to';
+function toShow(v){
+  toView=v;
+  $$('#toTabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  toRenderAll();
+}
+function toPurposeChange(){
+  const v=$('#t_purpose').value;
+  const other=$('#t_purposeOther');
+  if(v==='__other'){other.style.display='block';}
+  else{other.style.display='none';}
+  toRenderAll();
+}
+function getPurpose(){
+  const v=$('#t_purpose').value;
+  if(v==='__other') return $('#t_purposeOther').value.trim()||'अन्य कार्य';
+  return v;
+}
+function toData(){
+  const mode=$('#t_mode').value;
+  const isPrivate=mode==='निजी सवारी साधन';
+  return {
+    name:$('#t_name').value,desig:$('#t_desig').value,office:$('#t_office').value,address:$('#t_address').value,
+    place:$('#t_place').value,purpose:getPurpose(),
+    from:$('#t_from').value,to:$('#t_to').value,days:Math.max(1,parseInt($('#t_days').value)||1),
+    mode:mode,payOffice:$('#t_payOffice').value,otherOrder:$('#t_otherOrder').value,
+    oneWay:num($('#t_oneWay').value),rate:num($('#t_rate').value),misc:num($('#t_misc').value),
+    toNo:$('#t_toNo').value,toDate:$('#t_toDate').value,repNo:$('#t_repNo').value,
+    empCode:$('#t_empCode').value,cashNo:$('#t_cashNo').value,advance:num($('#t_advance').value),
+    dateList:$('#t_dateList').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean),
+    isPrivate:isPrivate
+  };
+}
+function billRows(d){
+  const rows=[];
+  const fromPlace=d.office||'';
+  const n=d.days;
+  const travelCost=d.isPrivate?'--':d.oneWay;
+  if(n===1){
+    rows.push({a:fromPlace,b:d.place,date:d.from,mode:d.mode,travel:travelCost,isPrivate:d.isPrivate,days:1,rate:d.rate,allow:d.rate});
+  }else if(n===2){
+    rows.push({a:fromPlace,b:d.place,date:d.from,mode:d.mode,travel:travelCost,isPrivate:d.isPrivate,days:1,rate:d.rate,allow:d.rate});
+    rows.push({a:d.place,b:fromPlace,date:d.to,mode:d.mode,travel:travelCost,isPrivate:d.isPrivate,days:1,rate:d.rate,allow:d.rate});
+  }else{
+    rows.push({a:fromPlace,b:d.place,date:d.from,mode:d.mode,travel:travelCost,isPrivate:d.isPrivate,days:1,rate:d.rate,allow:d.rate});
+    rows.push({mid:true,label:'मिति '+d.from+' देखि '+d.to+' सम्म '+d.purpose+' सम्बन्धी कार्य',days:n-2,rate:d.rate,allow:(n-2)*d.rate});
+    rows.push({a:d.place,b:fromPlace,date:d.to,mode:d.mode,travel:travelCost,isPrivate:d.isPrivate,days:1,rate:d.rate,allow:d.rate});
+  }
+  return rows;
+}
+function toRenderAll(){
+  const d=toData();
+  if(toView==='to') $('#t_preview').innerHTML=renderTO(d);
+  else if(toView==='bill') $('#t_preview').innerHTML=renderBill(d);
+  else if(toView==='report') $('#t_preview').innerHTML=renderReport(d);
+  else $('#t_preview').innerHTML=renderPayment(d);
+}
+function renderTO(d){
+  let h='<div class="doc">';
+  h+='<div class="center" style="font-size:10pt">अनुसूची - ३८<br>नियम १८ को उपनियम (१) को खण्ड (म), नियम ३९ को उपनियम (१) को खण्ड (ह) र नियम ६० को उपनियम (१) को खण्ड (स) संग सम्बन्धित</div>';
+  h+='<div class="center" style="margin-top:10px"><b>'+esc(S.org1)+'</b><br><b>'+esc(S.org4)+'</b><br><b>भ्रमण आदेश (अन्तरदेशीय / अन्तर्राष्ट्रिय)</b></div>';
+  h+='<table class="plain" style="margin-top:10px"><tr><td>संख्या : '+esc(d.toNo)+'</td><td style="text-align:right">मिति : '+esc(d.toDate||d.from)+'</td></tr></table>';
+  h+='<div style="margin-top:14px;font-size:11pt;line-height:1.9">';
+  h+='<b>नाम:</b> '+esc(d.name)+'<br>';
+  h+='<b>दर्जा:</b> '+esc(d.desig)+'<br>';
+  h+='<b>भ्रमण गर्ने स्थान:</b> '+esc(d.place)+'<br>';
+  h+='<b>भ्रमण गर्ने उद्देश्य:</b> '+esc(d.purpose)+'<br>';
+  h+='<b>भ्रमण अवधि:</b> मिति '+esc(d.from)+' देखि '+esc(d.to)+' सम्म (कुल '+ne(d.days)+' दिन)<br>';
+  h+='<b>भ्रमण खर्च भुक्तानी गर्ने कार्यालय:</b> '+esc(d.payOffice)+'<br>';
+  h+='<b>भ्रमण गर्ने साधन:</b> '+esc(d.mode)+'<br>';
+  h+='<b>भ्रमणसम्बन्धी अन्य आदेश:</b> '+esc(d.otherOrder||'—');
+  h+='</div>';
+  h+='<div class="sign" style="margin-top:44px">'+
+     '<div>..........................<br>भ्रमणमा जानेको दस्तखत</div>'+
+     '<div>..........................<br>सिफारिस गर्नेको दस्तखत</div>'+
+     '<div>..........................<br>स्वीकृत गर्नेको दस्तखत</div></div>';
+  h+='<div style="margin-top:26px"><b>दृष्टव्य</b><ul>'+
+     '<li>अन्तरदेशीय वा अन्तर्राष्ट्रिय भ्रमणको प्रकार अनुसार सोही किसिममा उल्लेख गर्नुपर्छ।</li>'+
+     '<li>एक आर्थिक वर्षका सबै भ्रमण आदेशहरू क्रमानुसार नम्बरित हुनुपर्छ।</li>'+
+     '<li>भ्रमण आदेश जारी गर्ने कर्मचारीको नाम, पद र कार्यालयको नाम स्पष्ट रूपमा उल्लेख गर्नुपर्छ।</li>'+
+     '<li>भ्रमणको उद्देश्य स्पष्ट रूपमा उल्लेख गर्नुपर्छ।</li>'+
+     '<li>भ्रमण अवधि तोक्दा आवश्यक दिनको सङ्ख्या अनुसार अवधि निर्धारण गर्नुपर्छ।</li>'+
+     '<li>भ्रमणका लागि प्रयोग गरिने साधन अवस्थाअनुसार स्पष्ट रूपमा उल्लेख गर्नुपर्छ।</li>'+
+     '<li>भ्रमणसम्बन्धी अन्य कुनै आदेश भएमा सो पनि उल्लेख गर्नुपर्छ।</li></ul></div>';
+  h+=footerHTML();
+  h+='</div>';
+  return h;
+}
+function renderBill(d){
+  const rows=billRows(d);
+  let travelTot=0,allowTot=0;
+  rows.forEach(r=>{
+    if(!r.isPrivate) travelTot+=num(r.travel);
+    allowTot+=num(r.allow);
+  });
+  const misc=d.misc;
+  const grand=travelTot+allowTot+misc;
+  function fmtTravel(v){ if(v==='--') return '--'; return fmtNe(v); }
+
+  let h='<div class="doc">';
+  h+='<div style="text-align:right;font-size:9pt">म.ले.प.फारम नं : २२४</div>';
+  h+='<div class="center" style="margin-top:4px"><b>'+esc(S.org1)+'</b><br><b>'+esc(S.org4)+'</b><br>कार्यालय कोड नं. : ............<br><b>दैनिक तथा भ्रमण खर्चको बिल</b></div>';
+  h+='<table class="plain" style="margin-top:8px;font-size:10pt">'+
+     '<tr><td><b>नाम:</b> '+esc(d.name)+'</td><td><b>नगदी रसिद बिल आदेश सि नं.:</b> '+esc(d.cashNo)+' सँग सम्बन्धित</td><td><b>भ्रमण आदेश सि नं.:</b> '+esc(d.toNo)+'</td></tr>'+
+     '<tr><td><b>पद:</b> '+esc(d.desig)+'</td><td><b>कर्मचारी संकेत नं.:</b> '+esc(d.empCode)+'</td><td><b>भ्रमण प्रतिवेदन दर्ता नं.:</b> '+esc(d.repNo)+'</td></tr>'+
+     '<tr><td><b>कार्यालय:</b> '+esc(d.office)+'</td><td><b>स्थायी ठेगाना:</b> '+esc(d.address)+'</td><td><b>भ्रमणको उद्देश्य:</b> '+esc(d.purpose)+'</td></tr></table>';
+  h+='<table class="box" style="margin-top:6px"><tr>'+
+     '<th colspan="2">देखि</th><th colspan="2">सम्म</th><th colspan="2">भ्रमण</th><th colspan="3">दैनिक भत्ता</th><th colspan="2">फुटकर खर्च</th><th rowspan="2">कुल जम्मा</th></tr>'+
+     '<tr><th>स्थान</th><th>मिति</th><th>स्थान</th><th>मिति</th><th>साधन</th><th>खर्च</th><th>दिन</th><th>दर</th><th>जम्मा</th><th>विवरण</th><th>जम्मा</th></tr>'+
+     '<tr><td colspan="12" style="text-align:center;font-size:9pt">१&nbsp;&nbsp;२&nbsp;&nbsp;३&nbsp;&nbsp;४&nbsp;&nbsp;५&nbsp;&nbsp;६&nbsp;&nbsp;७&nbsp;&nbsp;८&nbsp;&nbsp;९&nbsp;&nbsp;१०&nbsp;&nbsp;११&nbsp;&nbsp;१२</td></tr>';
+  rows.forEach(r=>{
+    if(r.mid){
+      h+='<tr><td colspan="4">'+esc(r.label)+'</td><td></td><td></td><td style="text-align:center">'+ne(r.days)+'</td><td style="text-align:right">'+fmtNe(r.rate)+'</td><td style="text-align:right">'+fmtNe(r.allow)+'</td><td>--</td><td style="text-align:right">०</td><td style="text-align:right">'+fmtNe(r.allow)+'</td></tr>';
+    }else{
+      const travelDisplay=fmtTravel(r.travel);
+      const rowTotal=(r.travel==='--'?0:num(r.travel))+num(r.allow);
+      h+='<tr><td>'+esc(r.a)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.b)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.mode)+'</td><td style="text-align:right">'+travelDisplay+'</td><td style="text-align:center">'+ne(r.days)+'</td><td style="text-align:right">'+fmtNe(r.rate)+'</td><td style="text-align:right">'+fmtNe(r.allow)+'</td><td>--</td><td style="text-align:right">०</td><td style="text-align:right">'+fmtNe(rowTotal)+'</td></tr>';
+    }
+  });
+  h+='<tr><td colspan="5" style="text-align:right"><b>जम्मा</b></td><td style="text-align:right">'+fmtNe(travelTot)+'</td><td></td><td></td><td style="text-align:right">'+fmtNe(allowTot)+'</td><td></td><td style="text-align:right">'+fmtNe(misc)+'</td><td style="text-align:right"><b>'+fmtNe(grand)+'</b></td></tr>';
+  h+='</table>';
+  h+='<table style="margin-top:8px;width:56%;font-size:10pt" class="box">'+
+     '<tr><td>१. भ्रमण खर्च (महल ६ को जम्मा रु.)</td><td style="text-align:right">'+fmtNe(travelTot)+'</td></tr>'+
+     '<tr><td>२. दैनिक भत्ता (महल ९ को जम्मा रु.)</td><td style="text-align:right">'+fmtNe(allowTot)+'</td></tr>'+
+     '<tr><td>४. फुटकर खर्च (महल ११ को जम्मा रु.)</td><td style="text-align:right">'+fmtNe(misc)+'</td></tr>'+
+     '<tr><td>५. कुल जम्मा (महल १२ को जम्मा रु.)</td><td style="text-align:right">'+fmtNe(grand)+'</td></tr>'+
+     '<tr><td>६. भ्रमण पेश्की रु.</td><td style="text-align:right">'+fmtNe(d.advance)+'</td></tr>'+
+     '<tr><td>७. खुद भुक्तानी पाउने रकम रु.</td><td style="text-align:right">'+fmtNe(grand-d.advance)+'</td></tr>'+
+     '</table>';
+  h+='<table class="plain" style="margin-top:10px;font-size:10pt">'+
+     '<tr><td>स्वीकृत भ्रमण आदेश नं. '+esc(d.toNo)+'</td><td style="text-align:right">मिति '+esc(d.toDate||d.from)+'</td></tr></table>';
+  h+='<div style="font-size:10pt;margin-top:6px">पेश भएको व्यहोरा ठीक छ, झुट्टा ठहरे प्रचलित कानुन बमोजिम सहुँला/बुझाउँला छु।<br>भ्रमण गर्ने कर्मचारीको दस्तखतः ..........................  मितिः ............</div>';
+  h+='<div class="sign" style="margin-top:26px;font-size:10pt">'+
+     '<div>जाँच गर्ने अधिकारीको दस्तखतः<br>..........................<br>मितिः</div>'+
+     '<div><b>स्वीकृत रकम: '+fmtNe(grand-d.advance)+'</b></div>'+
+     '<div>स्वीकृत गर्ने अधिकारीको दस्तखतः<br>..........................<br>मितिः</div></div>';
+  h+=footerHTML();
+  h+='</div>';
+  return h;
+}
+function reportDescriptions(d){
+  const n=d.days;const arr=[];
+  for(let i=0;i<n;i++){
+    if(i===0) arr.push((d.office||'कार्यालय')+' बाट '+d.place+' प्रस्थान गरी सम्बन्धित कार्यालयमा सम्पर्क तथा कार्यक्रमको प्रारम्भिक जानकारी लिइयो।');
+    else if(i===n-1) arr.push('सम्पन्न कार्यबारे जानकारी गराई '+d.place+' बाट फिर्ता भइयो।');
+    else arr.push(d.purpose+' सम्बन्धी कार्य सम्पन्न गरियो।');
+  }
+  return arr;
+}
+function renderReport(d){
+  const descs=reportDescriptions(d);
+  const dates=[];
+  for(let i=0;i<d.days;i++){
+    if(d.dateList[i]) dates[i]=d.dateList[i];
+    else if(i===0) dates[i]=d.from;
+    else if(i===d.days-1) dates[i]=d.to;
+    else dates[i]='................';
+  }
+  let h='';
+  if($('#t_letterhead').checked) h+=letterheadHTML('ne');
+  h+='<div class="doc">';
+  h+='<div style="text-align:right;font-size:10pt">म.ले.प.फारम नं : ९०९<br>मिति: '+esc(d.to)+'</div>';
+  h+='<h2>भ्रमण प्रतिवेदन</h2>';
+  h+='<table class="plain" style="font-size:11pt">'+
+     '<tr><td style="width:35%"><b>भ्रमण गर्ने कर्मचारीको नाम:</b></td><td>'+esc(d.name)+'</td></tr>'+
+     '<tr><td><b>पद:</b></td><td>'+esc(d.desig)+'</td></tr>'+
+     '<tr><td><b>कार्यालय:</b></td><td>'+esc(d.office)+'</td></tr>'+
+     '<tr><td><b>भ्रमण स्थान:</b></td><td>'+esc(d.place)+'</td></tr>'+
+     '<tr><td><b>भ्रमण अवधि:</b></td><td>'+esc(d.from)+' देखि '+esc(d.to)+' सम्म (कुल '+ne(d.days)+' दिन)</td></tr>'+
+     '<tr><td><b>भ्रमणको उद्देश्य:</b></td><td>'+esc(d.purpose)+'</td></tr></table>';
+  h+='<table class="box" style="margin-top:10px"><tr><th style="width:22%">मिति</th><th>सम्पन्न गरिएको कार्य विवरण</th></tr>';
+  for(let i=0;i<d.days;i++){h+='<tr><td style="text-align:center">'+esc(dates[i])+'</td><td>'+esc(descs[i])+'</td></tr>';}
+  h+='</table>';
+  h+='<p style="text-align:justify;margin-top:12px;font-size:11pt">उपरोक्त अवधिमा '+esc(d.place)+' मा '+esc(d.purpose)+' सम्बन्धी कार्य सम्पन्न गरियो। सो कार्यका क्रममा आवश्यक छलफल, मस्यौदा तयारी, प्रस्तुतीकरण तथा अन्तिम मस्यौदा पेश गर्ने कार्य सम्पन्न भएको व्यहोरा जानकारी गराउँदछु।</p>';
+  h+='<div class="sign" style="margin-top:40px"><div></div><div><b>प्रतिवेदक</b><br><br>..........................<br>'+esc(d.name)+'<br>'+esc(d.desig)+'</div></div>';
+  h+=footerHTML();
+  h+='</div>';
+  return h;
+}
+function renderPayment(d){
+  const addressee=S.tgtNameNe||S.org1;
+  const addresseeAddr=S.tgtAddrNe||'';
+  const travelPlace=d.place||addressee;
+  let h='';
+  if($('#t_letterhead').checked) h+=letterheadHTML('ne');
+  h+='<div class="doc">';
+  h+='<div style="text-align:right;font-size:10pt">मिति: '+esc(d.to)+'</div>';
+  h+='<div style="margin-top:26px;font-size:11pt">श्रीमान् नगर प्रमुख ज्यु,<br>'+esc(addressee)+(addresseeAddr?'<br>'+esc(addresseeAddr):'')+'</div>';
+  h+='<div class="center" style="margin:14px 0 10px"><b>विषय : भुक्तानी पाउँ भन्ने सम्बन्धमा</b></div>';
+  h+='<p style="text-align:justify;font-size:11pt">प्रस्तुत विषयमा, '+esc(d.office)+' को '+esc(d.purpose)+' का निमित्त म मिति '+esc(d.from)+' देखि '+esc(d.to)+' सम्म '+esc(travelPlace)+' गई पुनः फर्किएको कुरा जानकारी गराउँदै सोको भ्रमण आदेश र भ्रमण बिल यसै निवेदनसाथ पेश गरेको छु। पेश भएको भ्रमण बिल बमोजिमको खर्च तपशिल बमोजिमको बैंक खातामा भुक्तानी गराइदिनुहुन श्रीमान् समक्ष अनुरोध गर्दछु।</p>';
+  h+='<div style="margin-top:12px;font-size:11pt"><b>तपशिल</b><br>'+
+     'A/C Holder Name: '+esc(S.bankHolder)+'<br>'+
+     'Account Number: '+esc(S.bankAcc)+'<br>'+
+     'Bank Name: '+esc(S.bankName)+'<br>'+
+     'Branch Name: '+esc(S.bankBranch)+'</div>';
+  h+='<div class="sign" style="margin-top:56px"><div></div><div><b>निवेदक</b><br><br>..........................<br>'+esc(d.name)+'<br>'+esc(d.desig)+'<br>'+esc(d.office)+'</div></div>';
+  h+=footerHTML();
+  h+='</div>';
+  return h;
+}
+function initTO(){
+  $('#t_name').value=S.prepName;
+  $('#t_desig').value=S.prepDesig;
+  $('#t_office').value=S.org1+', '+S.org4;
+  $('#t_address').value=S.org1;
+  $('#t_payOffice').value=S.org1+', '+S.org4;
+  $('#t_place').value=S.tgtNameNe||'';
+  $('#t_purpose').value='सवारी खरिद सम्बन्धी आवश्यक कार्यहरू';
+  $('#t_mode').value='ट्याक्सी';
+  attachNpDatePicker($('#t_from'));
+  attachNpDatePicker($('#t_to'));
+  attachNpDatePicker($('#t_toDate'));
+  toRenderAll();
+}
+
+/* ================= INIT ================= */
+loadSettingsForm();
+bindLogo('s_logoLeft','logoLeft');
+bindLogo('s_logoRight','logoRight');
+initSpec();
+initInsp();
+initEst();
+initLetter();
+initTO();
+specPreviewRender();
+</script>
+</body>
+</html>
